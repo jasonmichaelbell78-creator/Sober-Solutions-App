@@ -1,0 +1,53 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_KEY=${_API_KEY}'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sober-solutions-app:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sober-solutions-app:latest'
+      - '.'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sober-solutions-app:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sober-solutions-app:latest'
+
+  # Deploy to Cloud Run (optional - uncomment if using Cloud Run)
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   args:
+  #     - 'gcloud'
+  #     - 'run'
+  #     - 'deploy'
+  #     - 'sober-solutions-app'
+  #     - '--image'
+  #     - 'gcr.io/$PROJECT_ID/sober-solutions-app:$COMMIT_SHA'
+  #     - '--region'
+  #     - 'us-central1'
+  #     - '--platform'
+  #     - 'managed'
+  #     - '--allow-unauthenticated'
+  #     - '--port'
+  #     - '8080'
+
+images:
+  - 'gcr.io/$PROJECT_ID/sober-solutions-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/sober-solutions-app:latest'
+
+# Substitution variables
+# Set _API_KEY in Google Cloud Build triggers or pass via --substitutions flag
+substitutions:
+  _API_KEY: ''  # Will be provided by Cloud Build trigger
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'N1_HIGHCPU_8'
