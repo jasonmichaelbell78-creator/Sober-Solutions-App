@@ -1490,7 +1490,7 @@ const AdminDashboard = ({
                                  <div>
                                     <h4 className="font-bold text-xl text-stone-800">{client.firstName} {client.lastName}</h4>
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
-                                    <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id => client.targetHouseId)?.name || 'Unknown'}</span></p>
+                                    <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
                                  <div className="flex gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>Admit</Button>
