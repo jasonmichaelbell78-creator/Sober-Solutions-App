@@ -1,0 +1,7 @@
+{
+  "name": "Sober Solutions",
+  "description": "A comprehensive house management system for sober living facilities featuring intake processing, bed management, and GPS-based client check-ins.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
