@@ -4,14 +4,14 @@ import { MOCK_HOUSES, MOCK_CLIENTS, ADMIN_PASSWORD } from './constants';
 import { generateDailyReport, analyzeIntakeRisk } from './services/geminiService';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
-import { 
-  Home, 
-  UserPlus, 
-  Users, 
-  MapPin, 
-  CheckCircle, 
-  Activity, 
-  LogOut, 
+import {
+  Home,
+  UserPlus,
+  Users,
+  MapPin,
+  CheckCircle,
+  Activity,
+  LogOut,
   BedDouble,
   ClipboardCheck,
   BrainCircuit,
@@ -32,7 +32,10 @@ import {
   DoorOpen,
   Calendar,
   Lock,
-  Key
+  Key,
+  User,
+  Eye,
+  FileCheck
 } from 'lucide-react';
 
 // --- Constants ---
@@ -115,24 +118,80 @@ const LegalCheck = ({ readOnly, label, value, onChange, details, onDetailsChange
   </div>
 );
 
-const AgreementSection = ({ readOnly, title, description, checked, onChange }: any) => (
-  <div className={`border rounded-2xl p-6 transition-colors ${checked ? 'bg-primary/5 border-primary/20' : 'bg-stone-50 border-stone-200'}`}>
-      <div className="flex items-start gap-4">
-          <input 
-            type="checkbox" 
-            className="mt-1.5 w-6 h-6 text-primary rounded focus:ring-primary accent-primary" 
-            checked={checked} 
-            onChange={e => onChange(e.target.checked)} 
-            disabled={readOnly} 
+const AgreementSection = ({ readOnly, title, description, checked, onChange, fullText }: any) => {
+  const [showModal, setShowModal] = useState(false);
+  const [hasRead, setHasRead] = useState(false);
+
+  return (
+    <>
+      <div className={`border rounded-2xl p-6 transition-colors ${checked ? 'bg-primary/5 border-primary/20' : 'bg-stone-50 border-stone-200'}`}>
+        <div className="flex items-start gap-4">
+          <input
+            type="checkbox"
+            className="mt-1.5 w-6 h-6 text-primary rounded focus:ring-primary accent-primary"
+            checked={checked}
+            onChange={e => onChange(e.target.checked)}
+            disabled={readOnly || !hasRead}
             required
+            title={!hasRead ? "You must read the full waiver text first" : ""}
           />
-          <div>
-              <h4 className="font-bold text-stone-800 text-lg">{title} <span className="text-secondary text-xs font-normal ml-2">* Required</span></h4>
-              <p className="text-stone-600 mt-2 leading-relaxed">{description}</p>
+          <div className="flex-1">
+            <h4 className="font-bold text-stone-800 text-lg">{title} <span className="text-secondary text-xs font-normal ml-2">* Required</span></h4>
+            <p className="text-stone-600 mt-2 leading-relaxed">{description}</p>
+            {!readOnly && !hasRead && (
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="mt-4 flex items-center gap-2 text-primary hover:text-primary/80 font-semibold text-sm transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+                Read Full Waiver Text (Required)
+              </button>
+            )}
+            {hasRead && (
+              <p className="mt-3 text-green-600 text-sm flex items-center gap-2">
+                <FileCheck className="w-4 h-4" />
+                You have read this waiver
+              </p>
+            )}
           </div>
+        </div>
       </div>
-  </div>
-);
+
+      {/* Waiver Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-8 py-6 border-b border-stone-100 bg-stone-50 flex justify-between items-center">
+              <h3 className="font-bold text-xl text-stone-800">{title}</h3>
+              <button onClick={() => setShowModal(false)}>
+                <X className="w-6 h-6 text-stone-400 hover:text-stone-600" />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="prose prose-stone max-w-none">
+                {fullText}
+              </div>
+            </div>
+            <div className="px-8 py-6 border-t border-stone-100 bg-stone-50 flex justify-between items-center">
+              <p className="text-sm text-stone-600">Please read the entire document before acknowledging</p>
+              <Button
+                onClick={() => {
+                  setHasRead(true);
+                  setShowModal(false);
+                }}
+                variant="primary"
+              >
+                <FileCheck className="w-4 h-4 mr-2" />
+                I Have Read This
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 // --- Sub-Components ---
 
@@ -408,7 +467,7 @@ const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewSt
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <CheckCircle className="w-5 h-5 text-red-200 group-hover:text-white" />
+            <User className="w-5 h-5 text-white/70 group-hover:text-white" />
           </Button>
         </div>
       </div>
@@ -730,28 +789,75 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
             {step === 5 && (
                 <Card title="Community Understanding & Waivers">
                     <div className="space-y-6">
-                        <AgreementSection 
+                        <AgreementSection
                             readOnly={readOnly}
                             title="Disclaimer and Liability Waiver"
                             description="Guests are not tenants. Sober Solutions is not responsible for damage to person or property. I waive all claims against Sober Solutions."
                             checked={data.agreementLiability}
                             onChange={(v: boolean) => handleChange('agreementLiability', v)}
+                            fullText={
+                              <div className="space-y-4 text-stone-700 leading-relaxed">
+                                <h4 className="font-bold text-lg">Disclaimer and Liability Waiver</h4>
+                                <p>By signing this agreement, I acknowledge and agree to the following:</p>
+                                <ol className="list-decimal pl-6 space-y-3">
+                                  <li>I understand that I am a <strong>guest</strong> at Sober Solutions properties and am <strong>not a tenant</strong>. I have no tenancy rights and this is not a rental agreement.</li>
+                                  <li>Sober Solutions, its owners, operators, employees, and agents are <strong>not responsible</strong> for any damage, loss, injury, or death to person or property that may occur while I am on the premises.</li>
+                                  <li>I <strong>waive all claims</strong> against Sober Solutions for any injuries, damages, or losses I may sustain, whether caused by negligence or otherwise.</li>
+                                  <li>I understand that Sober Solutions does not provide medical, therapeutic, or counseling services, and is not responsible for my physical or mental health.</li>
+                                  <li>I agree to hold Sober Solutions harmless from any liability arising from my stay at the property.</li>
+                                  <li>This waiver is binding upon my heirs, next of kin, executors, and personal representatives.</li>
+                                </ol>
+                                <p className="text-sm text-stone-500 italic mt-6">By clicking "I Have Read This" and checking the agreement box, I acknowledge that I have read, understood, and agree to all terms in this waiver.</p>
+                              </div>
+                            }
                         />
 
-                         <AgreementSection 
+                         <AgreementSection
                             readOnly={readOnly}
                             title="COVID-19 Waiver"
                             description="I acknowledge the contagious nature of COVID-19 and assume the risk of exposure. I release Sober Solutions from liability related to COVID-19."
                             checked={data.agreementCovid}
                             onChange={(v: boolean) => handleChange('agreementCovid', v)}
+                            fullText={
+                              <div className="space-y-4 text-stone-700 leading-relaxed">
+                                <h4 className="font-bold text-lg">COVID-19 Acknowledgement and Waiver</h4>
+                                <p>By signing this agreement, I acknowledge and agree to the following:</p>
+                                <ol className="list-decimal pl-6 space-y-3">
+                                  <li>I acknowledge that COVID-19 is an extremely contagious disease and I understand the risk of exposure to COVID-19 by staying at Sober Solutions properties.</li>
+                                  <li>I understand that the risk of becoming exposed to or infected by COVID-19 at Sober Solutions may result from the actions, omissions, or negligence of myself and others, including but not limited to, facility staff and other guests.</li>
+                                  <li>I <strong>voluntarily assume all risks</strong> related to exposure to COVID-19, and I agree that Sober Solutions is not responsible if I contract COVID-19.</li>
+                                  <li>I agree to follow all health and safety guidelines established by Sober Solutions and local health authorities regarding COVID-19 prevention.</li>
+                                  <li>I understand that if I exhibit symptoms of COVID-19 or test positive, I may be required to leave the property immediately.</li>
+                                  <li>I <strong>release and hold harmless</strong> Sober Solutions, its owners, employees, and agents from any liability, claims, or damages arising from COVID-19 exposure or infection.</li>
+                                </ol>
+                                <p className="text-sm text-stone-500 italic mt-6">By clicking "I Have Read This" and checking the agreement box, I acknowledge that I have read, understood, and agree to all terms in this waiver.</p>
+                              </div>
+                            }
                         />
 
-                        <AgreementSection 
+                        <AgreementSection
                             readOnly={readOnly}
                             title="Property Agreement"
                             description="I agree to indemnify Sober Solutions against claims arising from my actions. I am responsible for my property."
                             checked={data.agreementProperty}
                             onChange={(v: boolean) => handleChange('agreementProperty', v)}
+                            fullText={
+                              <div className="space-y-4 text-stone-700 leading-relaxed">
+                                <h4 className="font-bold text-lg">Property Responsibility Agreement</h4>
+                                <p>By signing this agreement, I acknowledge and agree to the following:</p>
+                                <ol className="list-decimal pl-6 space-y-3">
+                                  <li>I agree to <strong>indemnify and hold harmless</strong> Sober Solutions against any and all claims, demands, or causes of action arising from my actions or negligence while on the property.</li>
+                                  <li>I am solely responsible for all of my <strong>personal property</strong> brought onto Sober Solutions premises, including but not limited to clothing, electronics, vehicles, medications, and valuables.</li>
+                                  <li>Sober Solutions is <strong>not responsible</strong> for any lost, stolen, damaged, or destroyed personal property.</li>
+                                  <li>I agree not to bring any prohibited items onto the property, including but not limited to: alcohol, illegal drugs, weapons, or any items that violate house rules.</li>
+                                  <li>I understand that I am financially responsible for any damage I cause to Sober Solutions property, furnishings, or equipment, whether intentional or accidental.</li>
+                                  <li>I agree to leave the property in the same condition as when I arrived, normal wear and tear excepted.</li>
+                                  <li>I understand that Sober Solutions reserves the right to search my belongings and living space for prohibited items at any time.</li>
+                                  <li>If I damage property or cause harm to others due to my actions, I agree to accept full financial and legal responsibility.</li>
+                                </ol>
+                                <p className="text-sm text-stone-500 italic mt-6">By clicking "I Have Read This" and checking the agreement box, I acknowledge that I have read, understood, and agree to all terms in this agreement.</p>
+                              </div>
+                            }
                         />
 
                         <div className="pt-8 border-t border-stone-200">
@@ -1479,21 +1585,55 @@ const AdminDashboard = ({
              
              {/* SEPARATED BY HOUSE CONTEXT */}
              <div className="space-y-10">
-                {/* Pending / Unassigned Section */}
+                {/* Pending Applications Section */}
                 <div>
-                   <h3 className="text-lg font-bold text-stone-500 border-b border-stone-200 pb-3 mb-6 flex items-center"><ClipboardCheck className="w-5 h-5 mr-2"/> Pending Applications / Unassigned</h3>
+                   <h3 className="text-lg font-bold text-stone-500 border-b border-stone-200 pb-3 mb-6 flex items-center"><ClipboardCheck className="w-5 h-5 mr-2"/> Pending Applications</h3>
                    <div className="grid gap-4">
-                      {filteredClients.filter(c => !c.assignedHouseId && c.status === 'active').length === 0 && <p className="text-stone-400 text-sm italic p-4 bg-stone-50 rounded-xl border border-dashed border-stone-200">No pending applications found for this context.</p>}
-                      {filteredClients.filter(c => !c.assignedHouseId && c.status === 'active').map(client => (
+                      {filteredClients.filter(c => c.status === 'pending').length === 0 && <p className="text-stone-400 text-sm italic p-4 bg-stone-50 rounded-xl border border-dashed border-stone-200">No pending applications found for this context.</p>}
+                      {filteredClients.filter(c => c.status === 'pending').map(client => (
                          <Card key={client.id} className="border-l-[6px] border-l-amber-400">
                              <div className="flex justify-between items-center">
                                  <div>
-                                    <h4 className="font-bold text-xl text-stone-800">{client.firstName} {client.lastName}</h4>
+                                    <h4 className="font-bold text-xl text-stone-800 flex items-center gap-2">
+                                      {client.firstName} {client.lastName}
+                                      <span className="text-xs px-3 py-1 rounded-full font-bold bg-amber-100 text-amber-800">PENDING APPROVAL</span>
+                                    </h4>
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
                                  <div className="flex gap-3">
-                                    <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>Admit</Button>
+                                    <Button size="sm" variant="primary" onClick={() => {
+                                      const updatedClient = { ...client, status: 'active' as const };
+                                      setClients(clients.map(c => c.id === client.id ? updatedClient : c));
+                                    }}>
+                                      <CheckCircle className="w-4 h-4 mr-1" /> Approve
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
+                                 </div>
+                             </div>
+                         </Card>
+                      ))}
+                   </div>
+                </div>
+
+                {/* Unassigned (Approved but not admitted) Section */}
+                <div>
+                   <h3 className="text-lg font-bold text-stone-500 border-b border-stone-200 pb-3 mb-6 flex items-center"><Users className="w-5 h-5 mr-2"/> Approved - Awaiting Admission</h3>
+                   <div className="grid gap-4">
+                      {filteredClients.filter(c => !c.assignedHouseId && c.status === 'active').length === 0 && <p className="text-stone-400 text-sm italic p-4 bg-stone-50 rounded-xl border border-dashed border-stone-200">No approved residents awaiting admission.</p>}
+                      {filteredClients.filter(c => !c.assignedHouseId && c.status === 'active').map(client => (
+                         <Card key={client.id} className="border-l-[6px] border-l-green-400">
+                             <div className="flex justify-between items-center">
+                                 <div>
+                                    <h4 className="font-bold text-xl text-stone-800 flex items-center gap-2">
+                                      {client.firstName} {client.lastName}
+                                      <span className="text-xs px-3 py-1 rounded-full font-bold bg-green-100 text-green-800">APPROVED</span>
+                                    </h4>
+                                    <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
+                                    <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
+                                 </div>
+                                 <div className="flex gap-3">
+                                    <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>Admit to House</Button>
                                     <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
                                  </div>
                              </div>
@@ -1853,11 +1993,11 @@ export default function App() {
   const handleIntakeSubmit = async (intakeData: IntakeForm) => {
     // Optional: AI Analysis
     await analyzeIntakeRisk(JSON.stringify(intakeData));
-    
+
     const newClient: Client = {
       ...intakeData,
       id: `c${Date.now()}`,
-      status: 'active',
+      status: 'pending', // New applications start as pending and must be approved by admin
       assignedBedId: null,
       assignedHouseId: null, // Intentionally null until manager assigns them, but they have a targetHouseId
       checkInLogs: [],
@@ -1865,7 +2005,7 @@ export default function App() {
     };
 
     setClients([...clients, newClient]);
-    alert("Application submitted successfully! An admin will review your paperwork.");
+    alert("Application submitted successfully! An admin will review your application.");
     setView('LANDING');
   };
 
