@@ -9,6 +9,7 @@ import {
   updateClient,
   setClient,
   setHouse,
+  getHouses,
   initializeHouses,
   initializeClients,
   isHousesCollectionEmpty,
@@ -486,7 +487,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} strokeWidth={2.5} absoluteStrokeWidth />
+            <User size={20} />
           </Button>
         </div>
       </div>
@@ -781,7 +782,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                                     variant="primary"
                                     className="w-full sm:w-auto shrink-0"
                                 >
-                                    <Plus size={20} strokeWidth={2.5} absoluteStrokeWidth className="mr-2" /> Add Medication
+                                    <Plus size={20} /> Add Medication
                                 </Button>
                             )}
                         </div>
@@ -1113,7 +1114,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                   setShowTransfer(true);
                                }}>
                                   <BedDouble className="w-4 h-4 mr-1" />
-                                  Transfer Bed
+                                  {client.assignedBedId ? 'Transfer Bed' : 'Assign Bed'}
                                </Button>
                             </div>
                          </div>
@@ -1170,7 +1171,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                       onUpdateClient(updatedClient);
                                    }}
                                 >
-                                   <Plus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" /> Add Medication
+                                   <Plus size={16} /> Add Medication
                                 </Button>
                              )}
                           </div>
@@ -1394,7 +1395,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
                                 <Button variant="danger" onClick={handleDischargeSubmit}>
-                                  <DoorOpen size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
+                                  <DoorOpen size={16} />
                                   Finalize Discharge
                                 </Button>
                             </div>
@@ -1410,14 +1411,14 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
                 <div className="p-6 border-b border-stone-200 flex justify-between items-center">
-                   <h3 className="font-bold text-xl text-stone-800">Transfer Bed</h3>
+                   <h3 className="font-bold text-xl text-stone-800">{client.assignedBedId ? 'Transfer Bed' : 'Assign Bed'}</h3>
                    <button onClick={() => setShowTransfer(false)}>
                       <X className="w-6 h-6 text-stone-400 hover:text-stone-600"/>
                    </button>
                 </div>
                 <div className="p-6 space-y-6">
                    <p className="text-stone-600">
-                      Transfer <strong>{client.firstName} {client.lastName}</strong> to a new bed assignment.
+                      {client.assignedBedId ? 'Transfer' : 'Assign'} <strong>{client.firstName} {client.lastName}</strong> to a {client.assignedBedId ? 'new ' : ''}bed assignment.
                    </p>
 
                    {/* House Selection */}
@@ -2384,11 +2385,11 @@ const AdminDashboard = ({
                         createdBy: 'Admin',
                         createdAt: editingChore?.createdAt || new Date().toISOString(),
                         recurring: choreForm.recurring,
-                        recurrenceType: choreForm.recurring ? choreForm.recurrenceType : undefined,
                         reminderTime: choreForm.reminderTime,
                         completions: editingChore?.completions || [],
                         status: 'pending',
-                        houseId: choreForm.houseId || undefined
+                        ...(choreForm.recurring && choreForm.recurrenceType && { recurrenceType: choreForm.recurrenceType }),
+                        ...(choreForm.houseId && { houseId: choreForm.houseId })
                       };
 
                       if (editingChore) {
@@ -2518,18 +2519,34 @@ const ClientPortal = ({
 
       try {
         // 1. Try High Accuracy (GPS) - Preferred for validation
-        // Timeout 5s to fail fast if no GPS lock
-        position = await getPosition({ enableHighAccuracy: true, timeout: 5000 });
+        // Increased timeout to 15s for better GPS lock
+        position = await getPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0 // Don't use cached location
+        });
       } catch (err: any) {
         // 2. Fallback to Low Accuracy (WiFi/Cell Tower) - Better indoors, less battery
-        // Only if error is Timeout (3) or Unavailable (2). 
+        // Only if error is Timeout (3) or Unavailable (2).
         // If Permission Denied (1), we stop immediately.
         if (err.code === 2 || err.code === 3) {
           console.warn("High accuracy GPS failed, attempting low accuracy fallback...");
-          position = await getPosition({ enableHighAccuracy: false, timeout: 10000 });
+          position = await getPosition({
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 0
+          });
         } else {
           throw err;
         }
+      }
+
+      // Check GPS accuracy - reject if too inaccurate (more than 100 meters)
+      const accuracy = position.coords.accuracy;
+      console.log(`GPS Accuracy: ${accuracy.toFixed(1)} meters`);
+
+      if (accuracy > 100) {
+        throw new Error(`⚠️ GPS accuracy is ${accuracy.toFixed(0)} meters. Please wait for better signal or move to an area with clear sky view. Accuracy must be under 100 meters.`);
       }
 
       const newLog: CheckInLog = {
@@ -2978,6 +2995,29 @@ export default function App() {
           console.log(`📝 Initializing ${MOCK_CLIENTS.length} mock residents...`);
           await initializeClients(MOCK_CLIENTS);
           console.log('✅ Clients initialized successfully');
+
+          // Auto-assign mock residents to available beds
+          console.log('🛏️ Auto-assigning residents to beds...');
+          const currentHouses = await getHouses();
+          for (const house of currentHouses) {
+            const houseResidents = MOCK_CLIENTS.filter(c => c.assignedHouseId === house.id && c.status === 'active');
+            let bedIndex = 0;
+            const updatedRooms = house.rooms.map(room => ({
+              ...room,
+              beds: room.beds.map(bed => {
+                if (bedIndex < houseResidents.length) {
+                  const resident = houseResidents[bedIndex];
+                  bedIndex++;
+                  // Update client with bed assignment
+                  updateClient(resident.id, { assignedBedId: bed.id }).catch(console.error);
+                  return { ...bed, occupantId: resident.id };
+                }
+                return bed;
+              })
+            }));
+            await setHouse({ ...house, rooms: updatedRooms });
+          }
+          console.log(`✅ Assigned ${MOCK_CLIENTS.filter(c => c.status === 'active').length} residents to beds`);
         } else {
           console.log('ℹ️ Clients collection already has data, skipping initialization');
         }
