@@ -255,7 +255,9 @@ const LoginModal = ({
   if (!isOpen) return null;
 
   const handleAdminLogin = () => {
-    if (password === ADMIN_PASSWORD) {
+    const storedPassword = localStorage.getItem('adminPassword');
+    const correctPassword = storedPassword || ADMIN_PASSWORD;
+    if (password === correctPassword) {
       onLoginSuccess();
     } else {
       setError("Incorrect password.");
@@ -953,6 +955,9 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
   const [transferHouseId, setTransferHouseId] = useState<string>(client.assignedHouseId || houses[0]?.id || '');
   const [transferBedId, setTransferBedId] = useState<string>('');
   const [newNote, setNewNote] = useState<Partial<Note>>({ content: '', category: 'General' });
+  const [editingName, setEditingName] = useState(false);
+  const [editedFirstName, setEditedFirstName] = useState(client.firstName);
+  const [editedLastName, setEditedLastName] = useState(client.lastName);
 
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
@@ -1066,6 +1071,20 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
     };
     onUpdateClient(updatedClient);
     setNewNote({ content: '', category: 'General' });
+  };
+
+  const handleSaveName = () => {
+    if (!editedFirstName.trim() || !editedLastName.trim()) {
+      alert('Both first and last name are required');
+      return;
+    }
+    const updatedClient = {
+      ...client,
+      firstName: editedFirstName.trim(),
+      lastName: editedLastName.trim()
+    };
+    onUpdateClient(updatedClient);
+    setEditingName(false);
   };
 
   const handleDownloadFile = () => {
@@ -1183,13 +1202,41 @@ End of Resident File
           
           {/* Header */}
           <div className="bg-stone-50 p-8 border-b border-stone-200 flex justify-between items-start">
-             <div>
-                <h2 className="text-3xl font-bold text-stone-800 flex items-center gap-3">
-                   {client.firstName} {client.lastName}
-                   <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-wide ${client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-600'}`}>
-                     {client.status.toUpperCase()}
-                   </span>
-                </h2>
+             <div className="flex-1">
+                {editingName ? (
+                  <div className="flex items-center gap-3 mb-3">
+                    <input
+                      type="text"
+                      className="border border-stone-300 rounded-lg px-3 py-2 text-xl font-bold"
+                      value={editedFirstName}
+                      onChange={e => setEditedFirstName(e.target.value)}
+                      placeholder="First Name"
+                    />
+                    <input
+                      type="text"
+                      className="border border-stone-300 rounded-lg px-3 py-2 text-xl font-bold"
+                      value={editedLastName}
+                      onChange={e => setEditedLastName(e.target.value)}
+                      placeholder="Last Name"
+                    />
+                    <button onClick={handleSaveName} className="text-green-600 hover:bg-green-50 p-2 rounded-lg">
+                      <Save className="w-5 h-5"/>
+                    </button>
+                    <button onClick={() => { setEditingName(false); setEditedFirstName(client.firstName); setEditedLastName(client.lastName); }} className="text-stone-400 hover:bg-stone-100 p-2 rounded-lg">
+                      <X className="w-5 h-5"/>
+                    </button>
+                  </div>
+                ) : (
+                  <h2 className="text-3xl font-bold text-stone-800 flex items-center gap-3 group">
+                     <span>{client.firstName} {client.lastName}</span>
+                     <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-primary p-1 rounded transition-all">
+                       <Pencil className="w-5 h-5"/>
+                     </button>
+                     <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-wide ${client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-600'}`}>
+                       {client.status.toUpperCase()}
+                     </span>
+                  </h2>
+                )}
                 <p className="text-stone-500 mt-2 flex items-center gap-4">
                    <span className="font-medium bg-white px-2 py-1 rounded border border-stone-200">House: {houses.find(h => h.id === client.assignedHouseId)?.name || 'Unassigned'}</span>
                    <span className="bg-white px-2 py-1 rounded border border-stone-200">Sober Date: {client.soberDate}</span>
@@ -1697,6 +1744,36 @@ End of Resident File
                       <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">
                          Cancel
                       </Button>
+                      {client.assignedBedId && (
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            if (!confirm(`Remove ${client.firstName} ${client.lastName} from their current bed?`)) return;
+                            try {
+                              // Clear bed assignment
+                              const updatedHouses = houses.map(h => ({
+                                ...h,
+                                rooms: h.rooms.map(r => ({
+                                  ...r,
+                                  beds: r.beds.map(b =>
+                                    b.occupantId === client.id ? { ...b, occupantId: null } : b
+                                  )
+                                }))
+                              }));
+                              await onUpdateHouses(updatedHouses);
+                              await onUpdateClient({ ...client, assignedBedId: null, assignedHouseId: null });
+                              setShowTransfer(false);
+                              alert('Resident removed from bed successfully');
+                            } catch (error) {
+                              console.error('Error removing from bed:', error);
+                              alert('Error removing from bed. Please try again.');
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          Remove from Bed
+                        </Button>
+                      )}
                       <Button
                          variant="primary"
                          onClick={handleTransferBed}
@@ -1704,7 +1781,7 @@ End of Resident File
                          className="flex-1"
                       >
                          <BedDouble className="w-4 h-4 mr-1" />
-                         Confirm Transfer
+                         Confirm {client.assignedBedId ? 'Transfer' : 'Assignment'}
                       </Button>
                    </div>
                 </div>
@@ -1754,6 +1831,10 @@ const AdminDashboard = ({
     reminderTime: '18:00',
     houseId: ''
   });
+
+  // Settings State
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // New House Context Logic
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
@@ -1868,7 +1949,10 @@ const AdminDashboard = ({
       await onUpdateHouses(updatedHouses);
       await onUpdateClient(updatedClient);
 
-      // 5. Close modal only after successful save
+      // 5. Show success message
+      alert(`✅ ${admittingClient.firstName} ${admittingClient.lastName} has been successfully admitted and assigned to the bed!`);
+
+      // 6. Close modal only after successful save
       setAdmittingClient(null);
       setSelectionDetails(null);
     } catch (error) {
@@ -1968,6 +2052,9 @@ const AdminDashboard = ({
           </button>
           <button onClick={() => setTab('AI_REPORT')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'AI_REPORT' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
             <BrainCircuit className="w-5 h-5" /> AI Shift Report
+          </button>
+          <button onClick={() => setTab('SETTINGS')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'SETTINGS' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
+            <Key className="w-5 h-5" /> Settings
           </button>
         </nav>
         <div className="p-6 border-t border-stone-100">
@@ -2660,6 +2747,61 @@ const AdminDashboard = ({
             </Card>
           </div>
         )}
+
+        {tab === 'SETTINGS' && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Settings</h2>
+
+            {/* Change Admin Password */}
+            <Card title="Change Admin Password" className="max-w-2xl">
+              <div className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Update the admin password used to access the dashboard. The new password will take effect immediately.
+                </p>
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    className={INPUT_CLASS}
+                    value={newAdminPassword}
+                    onChange={e => setNewAdminPassword(e.target.value)}
+                    placeholder="Enter new password (minimum 6 characters)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Confirm Password</label>
+                  <input
+                    type="password"
+                    className={INPUT_CLASS}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+                <Button onClick={() => {
+                  if (newAdminPassword.length < 6) {
+                    alert('Password must be at least 6 characters');
+                    return;
+                  }
+                  if (newAdminPassword !== confirmPassword) {
+                    alert('Passwords do not match');
+                    return;
+                  }
+                  // Store new password in localStorage
+                  localStorage.setItem('adminPassword', newAdminPassword);
+                  alert('Admin password updated successfully!');
+                  setNewAdminPassword('');
+                  setConfirmPassword('');
+                }}>
+                  <Key className="w-4 h-4 mr-2" /> Update Password
+                </Button>
+                <p className="text-xs text-stone-500 mt-2">
+                  Current password: {localStorage.getItem('adminPassword') || 'admin (default)'}
+                </p>
+              </div>
+            </Card>
+          </div>
+        )}
         </div>
 
         {/* Mobile Bottom Nav - Visible only on Mobile */}
@@ -2763,12 +2905,21 @@ const ClientPortal = ({
         }
       }
 
-      // Check GPS accuracy - reject if too inaccurate (more than 100 meters)
+      // Check GPS accuracy
       const accuracy = position.coords.accuracy;
       console.log(`GPS Accuracy: ${accuracy.toFixed(1)} meters`);
 
-      if (accuracy > 100) {
-        throw new Error(`⚠️ GPS accuracy is ${accuracy.toFixed(0)} meters. Please wait for better signal or move to an area with clear sky view. Accuracy must be under 100 meters.`);
+      // Detect if mobile or desktop based on touch capability and screen size
+      const isMobile = 'ontouchstart' in window && window.innerWidth < 768;
+      const maxAccuracy = isMobile ? 200 : 10000; // Mobile: 200m, Desktop: 10km
+
+      if (accuracy > maxAccuracy) {
+        throw new Error(`⚠️ GPS accuracy is ${accuracy.toFixed(0)} meters. ${isMobile ? 'Please wait for better signal or move to an area with clear sky view.' : 'Desktop location accuracy is limited. Please ensure you are in the correct location.'}`);
+      }
+
+      // Show warning if accuracy is poor but acceptable
+      if (accuracy > 100 && isMobile) {
+        console.warn(`GPS accuracy is ${accuracy.toFixed(0)} meters - location may not be precise`);
       }
 
       const newLog: CheckInLog = {
