@@ -1251,25 +1251,25 @@ End of Resident File
           </div>
 
           {/* Navigation */}
-          <div className="flex border-b border-stone-200 bg-white px-4 overflow-x-auto">
-              <button onClick={() => setTab('INFO')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                 <FileText className="w-4 h-4"/> Info Packet
+          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto scrollbar-hide" style={{scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch'}}>
+              <button onClick={() => setTab('INFO')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <FileText className="w-4 h-4"/> Info
               </button>
-              <button onClick={() => setTab('MEDS')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                 <Plus className="w-4 h-4"/> Medications
+              <button onClick={() => setTab('MEDS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <Plus className="w-4 h-4"/> Meds
               </button>
-              <button onClick={() => setTab('UA')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                 <FlaskConical className="w-4 h-4"/> Drug Screens
+              <button onClick={() => setTab('UA')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <FlaskConical className="w-4 h-4"/> Tests
               </button>
-              <button onClick={() => setTab('LOGS')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                 <History className="w-4 h-4"/> Check-In Logs
+              <button onClick={() => setTab('LOGS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <History className="w-4 h-4"/> Logs
               </button>
-              <button onClick={() => setTab('NOTES')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                 <FileText className="w-4 h-4"/> Notes & Log
+              <button onClick={() => setTab('NOTES')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <FileText className="w-4 h-4"/> Notes
               </button>
               {client.status === 'active' && (
-                <button onClick={() => setTab('DISCHARGE')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
-                   <DoorOpen className="w-4 h-4"/> Exit / Discharge
+                <button onClick={() => setTab('DISCHARGE')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                   <DoorOpen className="w-4 h-4"/> Discharge
                 </button>
               )}
           </div>
@@ -1282,29 +1282,40 @@ End of Resident File
                    <IntakeFormView readOnly={true} initialData={client} houses={houses} />
 
                    {/* Bed Assignment Section */}
-                   {client.status === 'active' && client.assignedHouseId && client.assignedBedId && (
+                   {client.status === 'active' && (
                       <div className="max-w-3xl mx-auto mt-8 pt-8 border-t border-stone-200">
                          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
                             <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
                                <BedDouble className="w-5 h-5 text-stone-400"/> Bed Assignment
                             </h3>
-                            <div className="flex justify-between items-center">
-                               <div>
-                                  <p className="text-sm font-medium text-stone-700">
-                                     Current Assignment: <span className="text-primary font-bold">
-                                        {houses.find(h => h.id === client.assignedHouseId)?.name || 'Unknown House'}
-                                        {' - '}
-                                        {houses.find(h => h.id === client.assignedHouseId)?.rooms
-                                           .flatMap(r => r.beds)
-                                           .find(b => b.id === client.assignedBedId)?.number || 'Unknown Bed'}
-                                     </span>
-                                  </p>
-                                  <p className="text-xs text-stone-500 mt-1">Transfer resident to a different bed or house</p>
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                               <div className="flex-1">
+                                  {client.assignedBedId && client.assignedHouseId ? (
+                                    <>
+                                      <p className="text-sm font-medium text-stone-700">
+                                         Current Assignment: <span className="text-primary font-bold">
+                                            {houses.find(h => h.id === client.assignedHouseId)?.name || 'Unknown House'}
+                                            {' - '}
+                                            {houses.find(h => h.id === client.assignedHouseId)?.rooms
+                                               .flatMap(r => r.beds)
+                                               .find(b => b.id === client.assignedBedId)?.number || 'Unknown Bed'}
+                                         </span>
+                                      </p>
+                                      <p className="text-xs text-stone-500 mt-1">Transfer resident to a different bed or house</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="text-sm font-medium text-amber-700">
+                                         No bed assigned
+                                      </p>
+                                      <p className="text-xs text-stone-500 mt-1">Click button to assign this resident to a bed</p>
+                                    </>
+                                  )}
                                </div>
                                <Button size="sm" variant="secondary" onClick={() => {
                                   setTransferHouseId(client.assignedHouseId || houses[0]?.id);
                                   setShowTransfer(true);
-                               }}>
+                               }} className="w-full md:w-auto">
                                   <BedDouble className="w-4 h-4 mr-1" />
                                   {client.assignedBedId ? 'Transfer Bed' : 'Assign Bed'}
                                </Button>
@@ -3270,7 +3281,7 @@ const ClientPortal = ({
           {/* All Chores Section (View Only) */}
           <div className="mb-8">
             <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">All House Chores</h3>
-            {chores.filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId).length === 0 ? (
+            {chores.filter(c => c.houseId === currentUser.assignedHouseId || (!c.houseId && currentUser.assignedHouseId)).length === 0 ? (
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 text-center">
                 <ClipboardCheck className="w-12 h-12 text-stone-300 mx-auto mb-3" />
                 <p className="text-stone-500 italic">No chores in your house yet</p>
@@ -3278,7 +3289,7 @@ const ClientPortal = ({
             ) : (
               <div className="space-y-3">
                 {chores
-                  .filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId)
+                  .filter(c => c.houseId === currentUser.assignedHouseId || (!c.houseId && currentUser.assignedHouseId))
                   .map(chore => {
                     const isMyChore = chore.assignedTo.includes(currentUser.id);
                     return (
