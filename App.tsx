@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { House, Client, ViewState, AdminTab, IntakeForm, CheckInType, CheckInLog, DrugTestLog, DischargeRecord, Chore, ChoreCompletion } from './types';
+import { House, Client, ViewState, AdminTab, IntakeForm, CheckInType, CheckInLog, DrugTestLog, DischargeRecord, Chore, ChoreCompletion, Note } from './types';
 import { MOCK_HOUSES, MOCK_CLIENTS, ADMIN_PASSWORD } from './constants';
 import { generateDailyReport, analyzeIntakeRisk } from './services/geminiService';
 import {
@@ -55,7 +55,8 @@ import {
   Key,
   User,
   Eye,
-  FileCheck
+  FileCheck,
+  Download
 } from 'lucide-react';
 
 // --- Constants ---
@@ -937,7 +938,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
 };
 
 const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge }: { client: Client, houses: House[], onClose: () => void, onUpdateClient: (c: Client) => void, onDischarge: (c: Client, record: DischargeRecord) => void }) => {
-  const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'DISCHARGE'>('INFO');
+  const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'NOTES' | 'DISCHARGE'>('INFO');
   const [newUa, setNewUa] = useState<Partial<DrugTestLog>>({ type: 'Instant', result: 'Negative', notes: '' });
   const [dischargeForm, setDischargeForm] = useState<Partial<DischargeRecord>>({
     type: 'Successful Completion',
@@ -951,6 +952,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferHouseId, setTransferHouseId] = useState<string>(client.assignedHouseId || houses[0]?.id || '');
   const [transferBedId, setTransferBedId] = useState<string>('');
+  const [newNote, setNewNote] = useState<Partial<Note>>({ content: '', category: 'General' });
 
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
@@ -1046,6 +1048,135 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
     }
   };
 
+  const handleAddNote = () => {
+    if (!newNote.content || newNote.content.trim() === '') {
+      alert('Please enter note content');
+      return;
+    }
+    const note: Note = {
+      id: `note-${Date.now()}`,
+      date: new Date().toISOString(),
+      author: 'Admin',
+      content: newNote.content,
+      category: newNote.category || 'General'
+    };
+    const updatedClient = {
+      ...client,
+      notes: [note, ...(client.notes || [])]
+    };
+    onUpdateClient(updatedClient);
+    setNewNote({ content: '', category: 'General' });
+  };
+
+  const handleDownloadFile = () => {
+    const house = houses.find(h => h.id === client.assignedHouseId);
+    const fileContent = `
+RESIDENT FILE - ${client.firstName} ${client.lastName}
+Generated: ${new Date().toLocaleString()}
+===============================================
+
+PERSONAL INFORMATION
+Name: ${client.firstName} ${client.lastName}
+Date of Birth: ${client.dob}
+Age: ${client.age}
+Phone: ${client.phone}
+Email: ${client.email}
+Status: ${client.status.toUpperCase()}
+Sober Date: ${client.soberDate}
+Submission Date: ${client.submissionDate}
+
+HOUSING INFORMATION
+Assigned House: ${house?.name || 'Unassigned'}
+House Address: ${house?.address || 'N/A'}
+
+DRIVER'S LICENSE
+Number: ${client.dlNumber}
+State: ${client.dlState}
+Expiration: ${client.dlExpiration}
+
+EMERGENCY CONTACT
+Name: ${client.emergencyName}
+Phone: ${client.emergencyPhone}
+Address: ${client.emergencyAddress}
+
+MEDICAL INFORMATION
+Primary Doctor: ${client.doctorName}
+Doctor Phone: ${client.doctorPhone}
+Doctor Address: ${client.doctorAddress}
+Allergies: ${client.allergies || 'None reported'}
+
+MEDICATIONS
+${client.medications && client.medications.length > 0 ? client.medications.map((med, i) => `
+${i + 1}. ${med.name}
+   Dose: ${med.dose}
+   Doctor: ${med.doctor}
+   Contact: ${med.contact}
+   Reason: ${med.reason}
+`).join('\n') : 'None reported'}
+
+MEDICAL HISTORY
+Overdose History: ${client.hasOverdosed ? `Yes (${client.overdoseCount} times on ${client.overdoseDates})` : 'No'}
+Suicide Attempts: ${client.hasAttemptedSuicide ? `Yes (${client.suicideCount} times on ${client.suicideDates})` : 'No'}
+
+LEGAL INFORMATION
+Felony: ${client.hasFelony ? `Yes - ${client.felonyExplanation}` : 'No'}
+Sex Offender: ${client.isSexOffender ? 'Yes' : 'No'}
+Assault Charges: ${client.hasAssaultCharges ? `Yes - ${client.assaultExplanation}` : 'No'}
+Specialized Court: ${client.isSpecializedCourt ? `Yes - ${client.specializedCourtName}` : 'No'}
+Parole/Probation: ${client.onParoleProbation ? `Yes - ${client.paroleExplanation}\nOfficer: ${client.paroleOfficerName} (${client.paroleOfficerPhone})` : 'No'}
+Pending Charges: ${client.hasPendingCharges ? `Yes - ${client.pendingChargesExplanation}` : 'No'}
+
+DRUG TEST HISTORY (${client.drugTestLogs?.length || 0} tests)
+${client.drugTestLogs && client.drugTestLogs.length > 0 ? client.drugTestLogs.map((log, i) => `
+${i + 1}. ${new Date(log.date).toLocaleDateString()}
+   Result: ${log.result}
+   Type: ${log.type}
+   Performed By: ${log.performedBy}
+   Notes: ${log.notes || 'None'}
+`).join('\n') : 'No drug tests recorded'}
+
+CHECK-IN HISTORY (${client.checkInLogs?.length || 0} check-ins)
+${client.checkInLogs && client.checkInLogs.length > 0 ? client.checkInLogs.map((log, i) => `
+${i + 1}. ${new Date(log.timestamp).toLocaleString()}
+   Location: ${log.locationName}
+   Type: ${log.type}
+   Comment: ${log.comment}
+`).join('\n') : 'No check-ins recorded'}
+
+NOTES & LOG (${client.notes?.length || 0} notes)
+${client.notes && client.notes.length > 0 ? client.notes.map((note, i) => `
+${i + 1}. [${note.category}] ${new Date(note.date).toLocaleString()}
+   By: ${note.author}
+   ${note.content}
+`).join('\n') : 'No notes recorded'}
+
+${client.dischargeRecord ? `
+DISCHARGE INFORMATION
+Date: ${client.dischargeRecord.date}
+Type: ${client.dischargeRecord.type}
+Reason: ${client.dischargeRecord.reason}
+Notes: ${client.dischargeRecord.notes}
+Forwarding Address: ${client.dischargeRecord.forwardingAddress}
+` : ''}
+
+ADDITIONAL COMMENTS
+${client.comments || 'None'}
+
+===============================================
+End of Resident File
+    `.trim();
+
+    const blob = new Blob([fileContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${client.firstName}_${client.lastName}_ResidentFile_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -1064,7 +1195,12 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                    <span className="bg-white px-2 py-1 rounded border border-stone-200">Sober Date: {client.soberDate}</span>
                 </p>
              </div>
-             <button onClick={onClose} className="text-stone-400 hover:text-secondary p-2 rounded-full hover:bg-stone-100 transition-colors"><X className="w-6 h-6"/></button>
+             <div className="flex gap-2">
+               <button onClick={handleDownloadFile} className="text-stone-400 hover:text-primary p-2 rounded-full hover:bg-stone-100 transition-colors" title="Download Resident File">
+                 <Download className="w-5 h-5"/>
+               </button>
+               <button onClick={onClose} className="text-stone-400 hover:text-secondary p-2 rounded-full hover:bg-stone-100 transition-colors"><X className="w-6 h-6"/></button>
+             </div>
           </div>
 
           {/* Navigation */}
@@ -1080,6 +1216,9 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
               </button>
               <button onClick={() => setTab('LOGS')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <History className="w-4 h-4"/> Check-In Logs
+              </button>
+              <button onClick={() => setTab('NOTES')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <FileText className="w-4 h-4"/> Notes & Log
               </button>
               {client.status === 'active' && (
                 <button onClick={() => setTab('DISCHARGE')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
@@ -1362,6 +1501,79 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                  </div>
               )}
 
+              {tab === 'NOTES' && (
+                 <div className="max-w-3xl mx-auto space-y-6">
+                    <h3 className="font-bold text-stone-700 mb-6 flex items-center gap-2 text-lg"><FileText className="w-5 h-5"/> Notes & Log</h3>
+
+                    {/* Add New Note Form */}
+                    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+                      <h4 className="font-bold text-stone-700 mb-4">Add New Note</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-bold text-stone-700 mb-2">Category</label>
+                          <select
+                            className={INPUT_CLASS}
+                            value={newNote.category}
+                            onChange={e => setNewNote({...newNote, category: e.target.value as Note['category']})}
+                          >
+                            <option value="General">General</option>
+                            <option value="Medical">Medical</option>
+                            <option value="Behavioral">Behavioral</option>
+                            <option value="Progress">Progress</option>
+                            <option value="Incident">Incident</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-stone-700 mb-2">Note Content</label>
+                          <textarea
+                            rows={4}
+                            className={INPUT_CLASS}
+                            value={newNote.content}
+                            onChange={e => setNewNote({...newNote, content: e.target.value})}
+                            placeholder="Enter detailed notes about this resident..."
+                          />
+                        </div>
+                        <Button onClick={handleAddNote}>
+                          <Plus className="w-4 h-4" /> Add Note
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Notes List */}
+                    <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100 shadow-sm overflow-hidden">
+                      {(!client.notes || client.notes.length === 0) && (
+                        <div className="p-8 text-center text-stone-400 italic">No notes found.</div>
+                      )}
+                      {(client.notes || []).map(note => (
+                        <div key={note.id} className="p-5 hover:bg-stone-50 transition-colors">
+                          <div className="flex justify-between items-start mb-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              note.category === 'Medical' ? 'bg-blue-100 text-blue-800' :
+                              note.category === 'Behavioral' ? 'bg-orange-100 text-orange-800' :
+                              note.category === 'Progress' ? 'bg-green-100 text-green-800' :
+                              note.category === 'Incident' ? 'bg-red-100 text-red-800' :
+                              'bg-stone-100 text-stone-800'
+                            }`}>
+                              {note.category}
+                            </span>
+                            <div className="text-right">
+                              <p className="text-xs text-stone-400 font-medium uppercase tracking-wide">
+                                {new Date(note.date).toLocaleString()}
+                              </p>
+                              <p className="text-xs text-stone-500 mt-1">
+                                by {note.author}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
+                            {note.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                 </div>
+              )}
+
               {tab === 'DISCHARGE' && (
                  <div className="max-w-2xl mx-auto">
                     <Card title="Process Discharge / Exit" className="border-secondary/30 shadow-secondary/5">
@@ -1538,7 +1750,7 @@ const AdminDashboard = ({
     description: '',
     assignedTo: [] as string[],
     recurring: false,
-    recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly',
+    recurrenceType: 1, // Days interval (1-7)
     reminderTime: '18:00',
     houseId: ''
   });
@@ -2100,7 +2312,7 @@ const AdminDashboard = ({
                   description: '',
                   assignedTo: [],
                   recurring: false,
-                  recurrenceType: 'weekly',
+                  recurrenceType: 1,
                   reminderTime: '18:00',
                   houseId: selectedHouseId === 'ALL' ? '' : selectedHouseId
                 });
@@ -2149,7 +2361,7 @@ const AdminDashboard = ({
                                 )}
                                 {chore.recurring && (
                                   <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
-                                    Recurring ({chore.recurrenceType})
+                                    Recurring (every {chore.recurrenceType || 1} day{(chore.recurrenceType || 1) !== 1 ? 's' : ''})
                                   </span>
                                 )}
                               </div>
@@ -2208,7 +2420,7 @@ const AdminDashboard = ({
                                     description: chore.description,
                                     assignedTo: chore.assignedTo,
                                     recurring: chore.recurring,
-                                    recurrenceType: chore.recurrenceType || 'weekly',
+                                    recurrenceType: chore.recurrenceType || 1,
                                     reminderTime: chore.reminderTime || '18:00',
                                     houseId: chore.houseId || ''
                                   });
@@ -2330,15 +2542,19 @@ const AdminDashboard = ({
 
                 {choreForm.recurring && (
                   <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-2">Recurrence Type</label>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Repeat Interval</label>
                     <select
                       className={INPUT_CLASS}
                       value={choreForm.recurrenceType}
-                      onChange={e => setChoreForm({...choreForm, recurrenceType: e.target.value as 'daily' | 'weekly' | 'monthly'})}
+                      onChange={e => setChoreForm({...choreForm, recurrenceType: parseInt(e.target.value)})}
                     >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
+                      <option value="1">Every Day</option>
+                      <option value="2">Every 2 Days</option>
+                      <option value="3">Every 3 Days</option>
+                      <option value="4">Every 4 Days</option>
+                      <option value="5">Every 5 Days</option>
+                      <option value="6">Every 6 Days</option>
+                      <option value="7">Every 7 Days (Weekly)</option>
                     </select>
                   </div>
                 )}
