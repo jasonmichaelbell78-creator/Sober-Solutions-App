@@ -183,4 +183,4 @@ export interface Chore {
 }
 
 export type ViewState = 'LANDING' | 'INTAKE' | 'ADMIN_DASHBOARD' | 'CLIENT_PORTAL';
-export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT' | 'CHORES';
+export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT' | 'CHORES' | 'SETTINGS';
