@@ -22,16 +22,27 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "px-8 py-4 text-lg"
   };
 
+  // Inline styles for colors (bypasses Tailwind compilation issues)
+  const inlineStyles: React.CSSProperties = {
+    backgroundColor: variant === 'primary' ? '#588157' :
+                     variant === 'secondary' ? '#BC4749' :
+                     variant === 'danger' ? '#ef4444' :
+                     'white',
+    color: variant === 'outline' ? '#57534e' : 'white',
+    border: variant === 'outline' ? '2px solid #e7e5e4' : 'none'
+  };
+
   const variants = {
-    primary: "bg-[#588157] text-white hover:bg-[#4A6E49]",
-    secondary: "bg-[#BC4749] text-white hover:bg-[#A0393B]",
-    outline: "border-2 border-stone-200 text-stone-600 hover:border-[#588157] hover:text-[#588157] bg-white",
-    danger: "bg-red-500 text-white hover:bg-red-600"
+    primary: "text-white",
+    secondary: "text-white",
+    outline: "text-stone-600",
+    danger: "text-white"
   };
 
   return (
     <button
       className={`${baseStyles} ${sizeStyles[size]} ${variants[variant]} ${className}`}
+      style={inlineStyles}
       disabled={isLoading || props.disabled}
       {...props}
     >
