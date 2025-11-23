@@ -487,7 +487,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} />
+            <User size={20} color="white" strokeWidth={2} />
           </Button>
         </div>
       </div>
@@ -1000,44 +1000,50 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
       return;
     }
 
-    // 1. Clear old bed assignment
-    if (client.assignedHouseId && client.assignedBedId) {
-      const oldHouse = houses.find(h => h.id === client.assignedHouseId);
-      if (oldHouse) {
-        const updatedOldHouse = {
-          ...oldHouse,
-          rooms: oldHouse.rooms.map(r => ({
+    try {
+      // 1. Clear old bed assignment
+      if (client.assignedHouseId && client.assignedBedId) {
+        const oldHouse = houses.find(h => h.id === client.assignedHouseId);
+        if (oldHouse) {
+          const updatedOldHouse = {
+            ...oldHouse,
+            rooms: oldHouse.rooms.map(r => ({
+              ...r,
+              beds: r.beds.map(b => b.id === client.assignedBedId ? { ...b, occupantId: null } : b)
+            }))
+          };
+          await setHouse(updatedOldHouse);
+        }
+      }
+
+      // 2. Assign to new bed
+      const newHouse = houses.find(h => h.id === transferHouseId);
+      if (newHouse) {
+        const updatedNewHouse = {
+          ...newHouse,
+          rooms: newHouse.rooms.map(r => ({
             ...r,
-            beds: r.beds.map(b => b.id === client.assignedBedId ? { ...b, occupantId: null } : b)
+            beds: r.beds.map(b => b.id === transferBedId ? { ...b, occupantId: client.id } : b)
           }))
         };
-        await setHouse(updatedOldHouse);
+        await setHouse(updatedNewHouse);
       }
-    }
 
-    // 2. Assign to new bed
-    const newHouse = houses.find(h => h.id === transferHouseId);
-    if (newHouse) {
-      const updatedNewHouse = {
-        ...newHouse,
-        rooms: newHouse.rooms.map(r => ({
-          ...r,
-          beds: r.beds.map(b => b.id === transferBedId ? { ...b, occupantId: client.id } : b)
-        }))
+      // 3. Update client record
+      const updatedClient = {
+        ...client,
+        assignedHouseId: transferHouseId,
+        assignedBedId: transferBedId
       };
-      await setHouse(updatedNewHouse);
+      await updateClient(client.id, updatedClient);
+
+      setShowTransfer(false);
+      setTransferBedId('');
+      alert(`Successfully ${client.assignedBedId ? 'transferred' : 'assigned'} ${client.firstName} to new bed!`);
+    } catch (error) {
+      console.error('Error transferring bed:', error);
+      alert('Error transferring bed. Please try again.');
     }
-
-    // 3. Update client record
-    const updatedClient = {
-      ...client,
-      assignedHouseId: transferHouseId,
-      assignedBedId: transferBedId
-    };
-    await updateClient(client.id, updatedClient);
-
-    setShowTransfer(false);
-    setTransferBedId('');
   };
 
   return (
@@ -2605,8 +2611,8 @@ const ClientPortal = ({
         id: `completion_${Date.now()}`,
         completedAt: new Date().toISOString(),
         completedBy: currentUser.id,
-        notes: choreCompletionNotes || undefined,
-        photoUrl: undefined // Photo upload would be implemented with Firebase Storage
+        ...(choreCompletionNotes && { notes: choreCompletionNotes })
+        // photoUrl is optional and omitted if not present
       };
 
       // Add completion to chore

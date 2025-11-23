@@ -23,10 +23,10 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variants = {
-    primary: "bg-primary text-white hover:bg-[#4A6E49] shadow-primary/20 hover:shadow-primary/40 [&>svg]:!text-white [&>svg]:!opacity-100",
-    secondary: "bg-secondary text-white hover:bg-[#A0393B] shadow-secondary/20 hover:shadow-secondary/40 [&>svg]:!text-white [&>svg]:!opacity-100",
-    outline: "border-2 border-stone-200 text-stone-600 hover:border-primary hover:text-primary bg-white [&>svg]:!opacity-100",
-    danger: "bg-red-500 text-white hover:bg-red-600 [&>svg]:!text-white [&>svg]:!opacity-100"
+    primary: "bg-[#588157] text-white hover:bg-[#4A6E49] shadow-[#588157]/20 hover:shadow-[#588157]/40 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100",
+    secondary: "bg-[#BC4749] text-white hover:bg-[#A0393B] shadow-[#BC4749]/20 hover:shadow-[#BC4749]/40 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100",
+    outline: "border-2 border-stone-200 text-stone-600 hover:border-[#588157] hover:text-[#588157] bg-white [&>svg]:!opacity-100 [&_svg]:!opacity-100",
+    danger: "bg-red-500 text-white hover:bg-red-600 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100"
   };
 
   return (
