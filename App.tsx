@@ -921,17 +921,20 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
 };
 
 const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge }: { client: Client, houses: House[], onClose: () => void, onUpdateClient: (c: Client) => void, onDischarge: (c: Client, record: DischargeRecord) => void }) => {
-  const [tab, setTab] = useState<'INFO' | 'UA' | 'LOGS' | 'DISCHARGE'>('INFO');
+  const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'DISCHARGE'>('INFO');
   const [newUa, setNewUa] = useState<Partial<DrugTestLog>>({ type: 'Instant', result: 'Negative', notes: '' });
-  const [dischargeForm, setDischargeForm] = useState<Partial<DischargeRecord>>({ 
-    type: 'Successful Completion', 
-    reason: '', 
-    notes: '', 
-    forwardingAddress: '', 
-    date: new Date().toISOString().split('T')[0] 
+  const [dischargeForm, setDischargeForm] = useState<Partial<DischargeRecord>>({
+    type: 'Successful Completion',
+    reason: '',
+    notes: '',
+    forwardingAddress: '',
+    date: new Date().toISOString().split('T')[0]
   });
   const [resetPassword, setResetPassword] = useState('');
   const [showReset, setShowReset] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferHouseId, setTransferHouseId] = useState<string>(client.assignedHouseId || houses[0]?.id || '');
+  const [transferBedId, setTransferBedId] = useState<string>('');
 
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
@@ -975,6 +978,52 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
     alert("Password updated successfully.");
   };
 
+  const handleTransferBed = async () => {
+    if (!transferBedId) {
+      alert("Please select a bed");
+      return;
+    }
+
+    // 1. Clear old bed assignment
+    if (client.assignedHouseId && client.assignedBedId) {
+      const oldHouse = houses.find(h => h.id === client.assignedHouseId);
+      if (oldHouse) {
+        const updatedOldHouse = {
+          ...oldHouse,
+          rooms: oldHouse.rooms.map(r => ({
+            ...r,
+            beds: r.beds.map(b => b.id === client.assignedBedId ? { ...b, occupantId: null } : b)
+          }))
+        };
+        await setHouse(updatedOldHouse);
+      }
+    }
+
+    // 2. Assign to new bed
+    const newHouse = houses.find(h => h.id === transferHouseId);
+    if (newHouse) {
+      const updatedNewHouse = {
+        ...newHouse,
+        rooms: newHouse.rooms.map(r => ({
+          ...r,
+          beds: r.beds.map(b => b.id === transferBedId ? { ...b, occupantId: client.id } : b)
+        }))
+      };
+      await setHouse(updatedNewHouse);
+    }
+
+    // 3. Update client record
+    const updatedClient = {
+      ...client,
+      assignedHouseId: transferHouseId,
+      assignedBedId: transferBedId
+    };
+    await updateClient(client.id, updatedClient);
+
+    setShowTransfer(false);
+    setTransferBedId('');
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -1001,6 +1050,9 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
               <button onClick={() => setTab('INFO')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Info Packet
               </button>
+              <button onClick={() => setTab('MEDS')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                 <Plus className="w-4 h-4"/> Medications
+              </button>
               <button onClick={() => setTab('UA')} className={`px-6 py-4 text-sm font-bold border-b-4 transition-all flex items-center gap-2 whitespace-nowrap ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FlaskConical className="w-4 h-4"/> Drug Screens
               </button>
@@ -1020,7 +1072,39 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
               {tab === 'INFO' && (
                  <>
                    <IntakeFormView readOnly={true} initialData={client} houses={houses} />
-                   
+
+                   {/* Bed Assignment Section */}
+                   {client.status === 'active' && client.assignedHouseId && client.assignedBedId && (
+                      <div className="max-w-3xl mx-auto mt-8 pt-8 border-t border-stone-200">
+                         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+                            <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                               <BedDouble className="w-5 h-5 text-stone-400"/> Bed Assignment
+                            </h3>
+                            <div className="flex justify-between items-center">
+                               <div>
+                                  <p className="text-sm font-medium text-stone-700">
+                                     Current Assignment: <span className="text-primary font-bold">
+                                        {houses.find(h => h.id === client.assignedHouseId)?.name || 'Unknown House'}
+                                        {' - '}
+                                        {houses.find(h => h.id === client.assignedHouseId)?.rooms
+                                           .flatMap(r => r.beds)
+                                           .find(b => b.id === client.assignedBedId)?.number || 'Unknown Bed'}
+                                     </span>
+                                  </p>
+                                  <p className="text-xs text-stone-500 mt-1">Transfer resident to a different bed or house</p>
+                               </div>
+                               <Button size="sm" variant="secondary" onClick={() => {
+                                  setTransferHouseId(client.assignedHouseId || houses[0]?.id);
+                                  setShowTransfer(true);
+                               }}>
+                                  <BedDouble className="w-4 h-4 mr-1" />
+                                  Transfer Bed
+                               </Button>
+                            </div>
+                         </div>
+                      </div>
+                   )}
+
                    {/* Account Management Section */}
                    <div className="max-w-3xl mx-auto mt-8 pt-8 border-t border-stone-200">
                       <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
@@ -1051,6 +1135,121 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                       </div>
                    </div>
                  </>
+              )}
+
+              {tab === 'MEDS' && (
+                 <div className="max-w-3xl mx-auto space-y-6">
+                    <Card title="Medication Management">
+                       <div className="space-y-4">
+                          <div className="flex justify-between items-center mb-4">
+                             <h4 className="font-bold text-stone-700">Current Medications</h4>
+                             {client.status === 'active' && (
+                                <Button
+                                   size="sm"
+                                   variant="secondary"
+                                   onClick={() => {
+                                      const updatedClient = {
+                                         ...client,
+                                         medications: [...(client.medications || []), { name: '', dose: '', doctor: '', contact: '', reason: '' }]
+                                      };
+                                      onUpdateClient(updatedClient);
+                                   }}
+                                >
+                                   <Plus className="w-4 h-4 mr-1" /> Add Medication
+                                </Button>
+                             )}
+                          </div>
+
+                          {(client.medications || []).length === 0 && (
+                             <p className="text-stone-400 italic text-center py-8 border-2 border-dashed border-stone-200 rounded-2xl">No medications listed.</p>
+                          )}
+
+                          {(client.medications || []).map((med, idx) => (
+                             <div key={idx} className="bg-stone-50 p-4 rounded-xl border border-stone-200 relative">
+                                {client.status === 'active' && (
+                                   <button
+                                      onClick={() => {
+                                         const updatedMeds = [...client.medications];
+                                         updatedMeds.splice(idx, 1);
+                                         onUpdateClient({...client, medications: updatedMeds});
+                                      }}
+                                      className="absolute top-4 right-4 text-red-400 hover:text-red-600"
+                                   >
+                                      <Trash2 className="w-4 h-4" />
+                                   </button>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="label">Medication Name</label>
+                                      <input
+                                         className={INPUT_CLASS}
+                                         value={med.name}
+                                         onChange={(e) => {
+                                            const updatedMeds = [...client.medications];
+                                            updatedMeds[idx].name = e.target.value;
+                                            onUpdateClient({...client, medications: updatedMeds});
+                                         }}
+                                         disabled={client.status !== 'active'}
+                                      />
+                                   </div>
+                                   <div>
+                                      <label className="label">Dosage</label>
+                                      <input
+                                         className={INPUT_CLASS}
+                                         value={med.dose}
+                                         onChange={(e) => {
+                                            const updatedMeds = [...client.medications];
+                                            updatedMeds[idx].dose = e.target.value;
+                                            onUpdateClient({...client, medications: updatedMeds});
+                                         }}
+                                         disabled={client.status !== 'active'}
+                                      />
+                                   </div>
+                                   <div>
+                                      <label className="label">Prescribing Doctor</label>
+                                      <input
+                                         className={INPUT_CLASS}
+                                         value={med.doctor}
+                                         onChange={(e) => {
+                                            const updatedMeds = [...client.medications];
+                                            updatedMeds[idx].doctor = e.target.value;
+                                            onUpdateClient({...client, medications: updatedMeds});
+                                         }}
+                                         disabled={client.status !== 'active'}
+                                      />
+                                   </div>
+                                   <div>
+                                      <label className="label">Doctor Contact</label>
+                                      <input
+                                         className={INPUT_CLASS}
+                                         value={med.contact}
+                                         onChange={(e) => {
+                                            const updatedMeds = [...client.medications];
+                                            updatedMeds[idx].contact = e.target.value;
+                                            onUpdateClient({...client, medications: updatedMeds});
+                                         }}
+                                         disabled={client.status !== 'active'}
+                                      />
+                                   </div>
+                                   <div className="md:col-span-2">
+                                      <label className="label">Reason for Medication</label>
+                                      <input
+                                         className={INPUT_CLASS}
+                                         value={med.reason}
+                                         onChange={(e) => {
+                                            const updatedMeds = [...client.medications];
+                                            updatedMeds[idx].reason = e.target.value;
+                                            onUpdateClient({...client, medications: updatedMeds});
+                                         }}
+                                         disabled={client.status !== 'active'}
+                                      />
+                                   </div>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                    </Card>
+                 </div>
               )}
 
               {tab === 'UA' && (
@@ -1124,7 +1323,15 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                          </div>
                                      </div>
                                      <div className="text-right">
-                                         <span className="text-xs font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded border border-stone-200">{log.location.lat.toFixed(4)}, {log.location.lng.toFixed(4)}</span>
+                                         <a
+                                            href={`https://www.google.com/maps?q=${log.location.lat},${log.location.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs font-mono text-primary hover:text-primary/80 bg-stone-100 px-2 py-1 rounded border border-stone-200 inline-flex items-center gap-1 transition-colors hover:bg-primary/10"
+                                         >
+                                            <MapPin className="w-3 h-3" />
+                                            {log.location.lat.toFixed(4)}, {log.location.lng.toFixed(4)}
+                                         </a>
                                      </div>
                                  </div>
                              </div>
@@ -1171,7 +1378,10 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                             </div>
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
-                                <Button variant="danger" onClick={handleDischargeSubmit}>Finalize Discharge</Button>
+                                <Button variant="danger" onClick={handleDischargeSubmit}>
+                                  <DoorOpen className="w-4 h-4 mr-1" />
+                                  Finalize Discharge
+                                </Button>
                             </div>
                         </div>
                     </Card>
@@ -1179,6 +1389,94 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
               )}
           </div>
        </div>
+
+       {/* Transfer Bed Modal */}
+       {showTransfer && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                <div className="p-6 border-b border-stone-200 flex justify-between items-center">
+                   <h3 className="font-bold text-xl text-stone-800">Transfer Bed</h3>
+                   <button onClick={() => setShowTransfer(false)}>
+                      <X className="w-6 h-6 text-stone-400 hover:text-stone-600"/>
+                   </button>
+                </div>
+                <div className="p-6 space-y-6">
+                   <p className="text-stone-600">
+                      Transfer <strong>{client.firstName} {client.lastName}</strong> to a new bed assignment.
+                   </p>
+
+                   {/* House Selection */}
+                   <div>
+                      <label className="label">Select House</label>
+                      <select
+                         className={INPUT_CLASS}
+                         value={transferHouseId}
+                         onChange={(e) => {
+                            setTransferHouseId(e.target.value);
+                            setTransferBedId('');
+                         }}
+                      >
+                         {houses.map(h => (
+                            <option key={h.id} value={h.id}>{h.name}</option>
+                         ))}
+                      </select>
+                   </div>
+
+                   {/* Bed Selection */}
+                   <div>
+                      <label className="label">Select Bed</label>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                         {houses.find(h => h.id === transferHouseId)?.rooms.map(room => (
+                            <div key={room.id} className="border border-stone-200 rounded-lg p-3">
+                               <p className="font-bold text-sm text-stone-600 mb-2">{room.name}</p>
+                               <div className="grid grid-cols-4 gap-2">
+                                  {room.beds.map(bed => {
+                                     const isOccupied = bed.occupantId && bed.occupantId !== client.id;
+                                     const isCurrent = bed.id === client.assignedBedId && transferHouseId === client.assignedHouseId;
+                                     return (
+                                        <button
+                                           key={bed.id}
+                                           onClick={() => !isOccupied && setTransferBedId(bed.id)}
+                                           disabled={isOccupied}
+                                           className={`p-2 rounded border text-sm font-bold transition-all ${
+                                              transferBedId === bed.id
+                                                 ? 'border-primary bg-primary text-white'
+                                                 : isCurrent
+                                                 ? 'border-amber-400 bg-amber-50 text-amber-700'
+                                                 : isOccupied
+                                                 ? 'border-stone-200 bg-stone-100 text-stone-400 cursor-not-allowed'
+                                                 : 'border-stone-300 hover:border-primary hover:bg-primary/10'
+                                           }`}
+                                        >
+                                           {bed.number}
+                                           {isCurrent && ' (Current)'}
+                                        </button>
+                                     );
+                                  })}
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div className="flex gap-3 pt-4">
+                      <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">
+                         Cancel
+                      </Button>
+                      <Button
+                         variant="primary"
+                         onClick={handleTransferBed}
+                         disabled={!transferBedId || (transferBedId === client.assignedBedId && transferHouseId === client.assignedHouseId)}
+                         className="flex-1"
+                      >
+                         <BedDouble className="w-4 h-4 mr-1" />
+                         Confirm Transfer
+                      </Button>
+                   </div>
+                </div>
+             </div>
+          </div>
+       )}
     </div>
   );
 };
@@ -1274,9 +1572,22 @@ const AdminDashboard = ({
 
   const handleConfirmAdmission = () => {
     if (!admittingClient || !selectionDetails) return;
-    
-    // 1. Update Houses (Set Occupant)
-    const updatedHouses = houses.map(h => {
+
+    // 1. Clear any existing bed assignment for this resident (prevent duplication)
+    let housesAfterClear = houses.map(h => ({
+      ...h,
+      rooms: h.rooms.map(r => ({
+        ...r,
+        beds: r.beds.map(b =>
+          b.occupantId === admittingClient.id
+            ? { ...b, occupantId: null }
+            : b
+        )
+      }))
+    }));
+
+    // 2. Now assign to new bed
+    const updatedHouses = housesAfterClear.map(h => {
         if (h.id !== selectionDetails.houseId) return h;
         return {
             ...h,
@@ -1293,7 +1604,7 @@ const AdminDashboard = ({
         };
     });
 
-    // 2. Update Client (Set Status & Assignment)
+    // 3. Update Client (Set Status & Assignment)
     const updatedClient = {
         ...admittingClient,
         status: 'active' as const,
@@ -1314,19 +1625,8 @@ const AdminDashboard = ({
     setViewingClient(updatedClient); // Keep modal updated
   };
 
-  const handleDischargeClient = (client: Client, record: DischargeRecord) => {
-    // 1. Update Client
-    const updatedClient: Client = {
-        ...client,
-        status: record.type === 'Successful Completion' ? 'alumni' : 'discharged',
-        assignedBedId: null,
-        assignedHouseId: null,
-        dischargeRecord: record
-    };
-
-    onUpdateClient(updatedClient);
-
-    // 2. Update Bed (Remove occupant)
+  const handleDischargeClient = async (client: Client, record: DischargeRecord) => {
+    // 1. Update Bed First (Remove occupant) - must do this before clearing client's bed assignment
     if (client.assignedHouseId && client.assignedBedId) {
         const updatedHouses = houses.map(h => {
             if (h.id !== client.assignedHouseId) return h;
@@ -1343,8 +1643,24 @@ const AdminDashboard = ({
                 })
             };
         });
-        onUpdateHouses(updatedHouses);
+
+        // Update house in Firestore
+        const targetHouse = updatedHouses.find(h => h.id === client.assignedHouseId);
+        if (targetHouse) {
+            await setHouse(targetHouse);
+        }
     }
+
+    // 2. Now Update Client - discharge status and clear bed assignment
+    const updatedClient: Client = {
+      ...client,
+      status: record.type === 'Successful Completion' ? 'alumni' : 'discharged',
+      assignedBedId: null,
+      assignedHouseId: null,
+      dischargeRecord: record
+    };
+
+    await updateClient(client.id, updatedClient);
     setViewingClient(null); // Close modal
   };
 
@@ -1553,7 +1869,7 @@ const AdminDashboard = ({
                                          </div>
                                      ) : (
                                          <div className="flex items-center gap-2 group cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingItem({ type: 'bed', houseId: house.id, roomId: room.id, bedId: bed.id }); setEditValue(bed.number); }}>
-                                             <span className="text-xs font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded">{bed.number}</span>
+                                             <span className="text-sm font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded">{bed.number}</span>
                                              <Pencil className="w-3 h-3 text-stone-300 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"/>
                                          </div>
                                      )}
@@ -1637,7 +1953,10 @@ const AdminDashboard = ({
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
                                  <div className="flex gap-3">
-                                    <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>Admit to House</Button>
+                                    <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
+                                      <UserPlus className="w-4 h-4 mr-1" />
+                                      Admit to House
+                                    </Button>
                                     <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
                                  </div>
                              </div>
@@ -1674,6 +1993,47 @@ const AdminDashboard = ({
                         </div>
                     </div>
                 )}
+
+                {/* Former Residents Section */}
+                <div className="mt-12">
+                   <h3 className="text-lg font-bold text-stone-500 border-b border-stone-200 pb-3 mb-6 flex items-center">
+                      <History className="w-5 h-5 mr-2"/> Former Residents
+                   </h3>
+                   <div className="grid gap-4">
+                      {filteredClients.filter(c => c.status === 'discharged' || c.status === 'alumni').length === 0 ? (
+                         <p className="text-stone-400 text-sm italic p-4 bg-stone-50 rounded-xl border border-dashed border-stone-200">No former residents.</p>
+                      ) : (
+                         filteredClients.filter(c => c.status === 'discharged' || c.status === 'alumni').map(client => (
+                            <Card key={client.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setViewingClient(client)}>
+                               <div className="flex justify-between items-center">
+                                  <div>
+                                     <h4 className="font-bold text-lg text-stone-800">
+                                        {client.firstName} {client.lastName}
+                                        <span className={`ml-3 text-xs px-3 py-1 rounded-full font-bold ${client.status === 'alumni' ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-600'}`}>
+                                           {client.status === 'alumni' ? 'ALUMNI' : 'DISCHARGED'}
+                                        </span>
+                                     </h4>
+                                     <p className="text-sm text-stone-500 mt-1">
+                                        Discharge Date: {client.dischargeRecord?.date ? new Date(client.dischargeRecord.date).toLocaleDateString() : 'Unknown'}
+                                     </p>
+                                     <p className="text-sm text-stone-500">
+                                        Type: {client.dischargeRecord?.type || 'Unknown'}
+                                     </p>
+                                     {client.dischargeRecord?.forwardingAddress && (
+                                        <p className="text-sm text-stone-500">
+                                           Forwarding: {client.dischargeRecord.forwardingAddress}
+                                        </p>
+                                     )}
+                                  </div>
+                                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setViewingClient(client); }}>
+                                     View Details
+                                  </Button>
+                               </div>
+                            </Card>
+                         ))
+                      )}
+                   </div>
+                </div>
              </div>
           </div>
         )}
@@ -1865,7 +2225,16 @@ const ClientPortal = ({
              <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
                     <h3 className="text-xl font-bold text-stone-800 mb-6">Confirm Check-In</h3>
-                    
+
+                    {/* Location Services Info */}
+                    <div className="bg-blue-50 text-blue-900 p-4 rounded-2xl text-sm mb-6 flex items-start gap-2 border border-blue-100">
+                       <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-600" />
+                       <div className="flex-1">
+                          <p className="font-bold mb-1">Location Services Required</p>
+                          <p className="text-xs text-blue-700">This check-in will request your GPS location for verification. Please allow location access when prompted.</p>
+                       </div>
+                    </div>
+
                     {errorMsg && (
                         <div className="bg-red-50 text-secondary p-4 rounded-2xl text-sm mb-6 flex items-start gap-2 border border-red-100">
                             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
@@ -2018,12 +2387,12 @@ export default function App() {
           setClients(clientsData);
 
           // Update currentUser if they're in the updated clients
-          if (currentUser) {
-            const updatedCurrentUser = clientsData.find(c => c.id === currentUser.id);
-            if (updatedCurrentUser) {
-              setCurrentUser(updatedCurrentUser);
-            }
-          }
+          // Use functional form to avoid stale closure
+          setCurrentUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            const updatedCurrentUser = clientsData.find(c => c.id === prevUser.id);
+            return updatedCurrentUser || prevUser;
+          });
         });
 
         setIsInitializing(false);
