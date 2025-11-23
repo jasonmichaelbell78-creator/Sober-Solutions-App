@@ -487,7 +487,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} color="white" strokeWidth={2} />
+            <User className="w-5 h-5" />
           </Button>
         </div>
       </div>

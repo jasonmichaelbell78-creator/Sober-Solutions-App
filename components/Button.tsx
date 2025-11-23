@@ -29,22 +29,6 @@ export const Button: React.FC<ButtonProps> = ({
     danger: "bg-red-500 text-white hover:bg-red-600"
   };
 
-  // Clone children and add white color to any SVG icons
-  const processChildren = (children: React.ReactNode): React.ReactNode => {
-    return React.Children.map(children, child => {
-      if (React.isValidElement(child)) {
-        // If it's an SVG or icon component, add color prop
-        if (child.type === 'svg' || (typeof child.type !== 'string' && child.type)) {
-          return React.cloneElement(child as React.ReactElement<any>, {
-            color: variant === 'outline' ? undefined : 'white',
-            style: { color: variant === 'outline' ? undefined : 'white' }
-          });
-        }
-      }
-      return child;
-    });
-  };
-
   return (
     <button
       className={`${baseStyles} ${sizeStyles[size]} ${variants[variant]} ${className}`}
@@ -54,7 +38,7 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
       ) : null}
-      {processChildren(children)}
+      {children}
     </button>
   );
 };
