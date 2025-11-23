@@ -2957,28 +2957,40 @@ export default function App() {
 
     const initializeFirebase = async () => {
       try {
+        console.log('🔥 Firebase initialization starting...');
+
         // Check if houses collection is empty (first-time setup)
         const housesEmpty = await isHousesCollectionEmpty();
+        console.log(`📦 Houses collection empty: ${housesEmpty}`);
 
         if (housesEmpty) {
-          console.log('First-time setup: Initializing houses in Firestore...');
+          console.log('🏠 First-time setup: Initializing houses in Firestore...');
           await initializeHouses(MOCK_HOUSES);
+          console.log('✅ Houses initialized successfully');
         }
 
         // Check if clients collection is empty (first-time setup)
         const clientsEmpty = await isClientsCollectionEmpty();
+        console.log(`👥 Clients collection empty: ${clientsEmpty}`);
 
         if (clientsEmpty) {
-          console.log('First-time setup: Initializing clients in Firestore...');
+          console.log('👤 First-time setup: Initializing clients in Firestore...');
+          console.log(`📝 Initializing ${MOCK_CLIENTS.length} mock residents...`);
           await initializeClients(MOCK_CLIENTS);
+          console.log('✅ Clients initialized successfully');
+        } else {
+          console.log('ℹ️ Clients collection already has data, skipping initialization');
         }
 
         // Set up real-time listeners
+        console.log('👂 Setting up real-time listeners...');
         unsubscribeHouses = subscribeToHouses((housesData) => {
+          console.log(`📊 Received ${housesData.length} houses from Firestore`);
           setHouses(housesData);
         });
 
         unsubscribeClients = subscribeToClients((clientsData) => {
+          console.log(`📊 Received ${clientsData.length} clients from Firestore`);
           setClients(clientsData);
 
           // Update currentUser if they're in the updated clients
@@ -2991,9 +3003,11 @@ export default function App() {
         });
 
         unsubscribeChores = subscribeToChores((choresData) => {
+          console.log(`📊 Received ${choresData.length} chores from Firestore`);
           setChores(choresData);
         });
 
+        console.log('✅ Firebase initialization complete');
         setIsInitializing(false);
       } catch (error) {
         console.error('Error initializing Firebase:', error);
