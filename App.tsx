@@ -1612,13 +1612,13 @@ const AdminDashboard = ({
       });
 
       // 3. Update Client (Set Status & Assignment)
+      const { dischargeRecord, ...clientWithoutDischarge } = admittingClient;
       const updatedClient = {
-          ...admittingClient,
+          ...clientWithoutDischarge,
           status: 'active' as const,
           assignedHouseId: selectionDetails.houseId,
           assignedBedId: selectionDetails.bedId,
-          drugTestLogs: admittingClient.drugTestLogs || [],
-          dischargeRecord: undefined
+          drugTestLogs: admittingClient.drugTestLogs || []
       };
 
       // 4. Save to Firebase (await both operations)
