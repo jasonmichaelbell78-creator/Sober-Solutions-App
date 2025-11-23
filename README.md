@@ -8,6 +8,10 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/10c7h-nM31bIo1VTmttgEWKE9MvVDlUaO
 
+## Architectural Blueprint
+
+Looking for the product/domain context and a ready-to-use prompt skeleton? See [docs/ARCHITECTURAL_BLUEPRINT.md](docs/ARCHITECTURAL_BLUEPRINT.md) for the market analysis, schema outline, security expectations, and generation-ready instructions that mirror leading sober living management platforms.
+
 ## Run Locally
 
 **Prerequisites:**  Node.js
