@@ -1008,45 +1008,54 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
     }
 
     try {
-      // 1. Clear old bed assignment
-      if (client.assignedHouseId && client.assignedBedId) {
-        const oldHouse = houses.find(h => h.id === client.assignedHouseId);
-        if (oldHouse) {
-          const updatedOldHouse = {
-            ...oldHouse,
-            rooms: oldHouse.rooms.map(r => ({
+      // 1. Update ALL houses in one operation: clear old bed everywhere and assign new bed
+      const updatedHouses = houses.map(h => {
+        if (h.id === transferHouseId) {
+          // This is the new house - assign to bed
+          return {
+            ...h,
+            rooms: h.rooms.map(r => ({
               ...r,
-              beds: r.beds.map(b => b.id === client.assignedBedId ? { ...b, occupantId: null } : b)
+              beds: r.beds.map(b => {
+                // Clear if this resident was here, or assign if this is the target bed
+                if (b.occupantId === client.id) return { ...b, occupantId: null };
+                if (b.id === transferBedId) return { ...b, occupantId: client.id };
+                return b;
+              })
             }))
           };
-          await setHouse(updatedOldHouse);
+        } else {
+          // Other houses - just clear this resident from any beds
+          return {
+            ...h,
+            rooms: h.rooms.map(r => ({
+              ...r,
+              beds: r.beds.map(b =>
+                b.occupantId === client.id ? { ...b, occupantId: null } : b
+              )
+            }))
+          };
         }
-      }
+      });
 
-      // 2. Assign to new bed
-      const newHouse = houses.find(h => h.id === transferHouseId);
-      if (newHouse) {
-        const updatedNewHouse = {
-          ...newHouse,
-          rooms: newHouse.rooms.map(r => ({
-            ...r,
-            beds: r.beds.map(b => b.id === transferBedId ? { ...b, occupantId: client.id } : b)
-          }))
-        };
-        await setHouse(updatedNewHouse);
-      }
-
-      // 3. Update client record
+      // 2. Update client record
       const updatedClient = {
         ...client,
         assignedHouseId: transferHouseId,
         assignedBedId: transferBedId
       };
-      await updateClient(client.id, updatedClient);
 
+      // 3. Save to Firebase
+      await onUpdateHouses(updatedHouses);
+      await onUpdateClient(updatedClient);
+
+      // 4. Close modal and show success
       setShowTransfer(false);
       setTransferBedId('');
-      alert(`Successfully ${client.assignedBedId ? 'transferred' : 'assigned'} ${client.firstName} to new bed!`);
+      alert(`✅ ${client.firstName} successfully ${client.assignedBedId ? 'transferred to' : 'assigned to'} new bed!`);
+
+      // 5. Close the client detail modal to force refresh
+      onClose();
     } catch (error) {
       console.error('Error transferring bed:', error);
       alert('Error transferring bed. Please try again.');
@@ -1771,10 +1780,12 @@ End of Resident File
                                   )
                                 }))
                               }));
+                              const updatedClient = { ...client, assignedBedId: null, assignedHouseId: null };
                               await onUpdateHouses(updatedHouses);
-                              await onUpdateClient({ ...client, assignedBedId: null, assignedHouseId: null });
+                              await onUpdateClient(updatedClient);
                               setShowTransfer(false);
-                              alert('Resident removed from bed successfully');
+                              alert('✅ Resident removed from bed successfully');
+                              onClose(); // Close detail modal to force refresh
                             } catch (error) {
                               console.error('Error removing from bed:', error);
                               alert('Error removing from bed. Please try again.');
