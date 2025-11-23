@@ -131,8 +131,17 @@ export interface Client extends IntakeForm {
   assignedHouseId: string | null;
   checkInLogs: CheckInLog[];
   drugTestLogs: DrugTestLog[];
+  notes?: Note[];
   dischargeRecord?: DischargeRecord;
   password?: string;
+}
+
+export interface Note {
+  id: string;
+  date: string;
+  author: string; // Admin name or user ID
+  content: string;
+  category?: 'General' | 'Medical' | 'Behavioral' | 'Progress' | 'Incident';
 }
 
 export interface CheckInLog {
@@ -166,7 +175,7 @@ export interface Chore {
   createdAt: string;
   dueDate?: string; // Optional due date
   recurring: boolean; // If true, chore repeats until reassigned
-  recurrenceType?: 'daily' | 'weekly' | 'monthly'; // How often it recurs
+  recurrenceType?: number; // How often it recurs (1-7 days)
   reminderTime?: string; // Time of day for reminder (24h format, e.g., "18:00")
   completions: ChoreCompletion[]; // History of completions
   status: 'pending' | 'completed' | 'overdue';
