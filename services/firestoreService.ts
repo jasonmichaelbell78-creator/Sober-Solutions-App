@@ -13,11 +13,12 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { House, Client, CheckInLog, DrugTestLog } from '../types';
+import { House, Client, CheckInLog, DrugTestLog, Chore, ChoreCompletion } from '../types';
 
 // Collection names
 const HOUSES_COLLECTION = 'houses';
 const CLIENTS_COLLECTION = 'clients';
+const CHORES_COLLECTION = 'chores';
 
 // ============================================
 // HOUSES CRUD OPERATIONS
@@ -216,4 +217,111 @@ export const isHousesCollectionEmpty = async (): Promise<boolean> => {
 export const isClientsCollectionEmpty = async (): Promise<boolean> => {
   const clientsSnapshot = await getDocs(collection(db, CLIENTS_COLLECTION));
   return clientsSnapshot.empty;
+};
+
+// ============================================
+// CHORES CRUD OPERATIONS
+// ============================================
+
+/**
+ * Create a new chore
+ */
+export const createChore = async (chore: Chore): Promise<string> => {
+  const choreRef = doc(db, CHORES_COLLECTION, chore.id);
+  await setDoc(choreRef, {
+    ...chore,
+    createdAt: chore.createdAt || new Date().toISOString(),
+    updatedAt: Timestamp.now()
+  });
+  return chore.id;
+};
+
+/**
+ * Get all chores (one-time fetch)
+ */
+export const getChores = async (): Promise<Chore[]> => {
+  const choresSnapshot = await getDocs(collection(db, CHORES_COLLECTION));
+  return choresSnapshot.docs.map(doc => {
+    const data = doc.data();
+    const { updatedAt, ...choreData } = data;
+    return choreData as Chore;
+  });
+};
+
+/**
+ * Listen to chores changes in real-time
+ */
+export const subscribeToChores = (callback: (chores: Chore[]) => void) => {
+  const choresQuery = query(
+    collection(db, CHORES_COLLECTION),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(choresQuery, (snapshot) => {
+    const chores = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const { updatedAt, ...choreData } = data;
+      return choreData as Chore;
+    });
+    callback(chores);
+  });
+};
+
+/**
+ * Get a single chore by ID
+ */
+export const getChore = async (choreId: string): Promise<Chore | null> => {
+  const choreRef = doc(db, CHORES_COLLECTION, choreId);
+  const choreSnap = await getDoc(choreRef);
+
+  if (choreSnap.exists()) {
+    const data = choreSnap.data();
+    const { updatedAt, ...choreData } = data;
+    return choreData as Chore;
+  }
+  return null;
+};
+
+/**
+ * Update a chore
+ */
+export const updateChore = async (choreId: string, updates: Partial<Chore>) => {
+  const choreRef = doc(db, CHORES_COLLECTION, choreId);
+  await updateDoc(choreRef, {
+    ...updates,
+    updatedAt: Timestamp.now()
+  });
+};
+
+/**
+ * Set entire chore (for complex updates)
+ */
+export const setChore = async (chore: Chore) => {
+  const choreRef = doc(db, CHORES_COLLECTION, chore.id);
+  await setDoc(choreRef, {
+    ...chore,
+    updatedAt: Timestamp.now()
+  }, { merge: true });
+};
+
+/**
+ * Delete a chore
+ */
+export const deleteChore = async (choreId: string) => {
+  const choreRef = doc(db, CHORES_COLLECTION, choreId);
+  await deleteDoc(choreRef);
+};
+
+/**
+ * Add completion to a chore
+ */
+export const addChoreCompletion = async (choreId: string, completion: ChoreCompletion) => {
+  const chore = await getChore(choreId);
+  if (!chore) throw new Error('Chore not found');
+
+  const updatedCompletions = [...(chore.completions || []), completion];
+  await updateChore(choreId, {
+    completions: updatedCompletions,
+    status: 'completed'
+  });
 };

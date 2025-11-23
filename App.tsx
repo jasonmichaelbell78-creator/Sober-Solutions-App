@@ -13,6 +13,7 @@ import {
   isHousesCollectionEmpty,
   addCheckInLog
 } from './services/firestoreService';
+import { getRandomBackground, Background } from './backgrounds';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import {
@@ -449,15 +450,16 @@ const ClientCard: React.FC<{ client: Client; onClick: (c: Client) => void }> = (
  </Card>
 );
 
-const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewState) => void, onRequestLogin: (type: 'ADMIN' | 'RESIDENT') => void }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFCF8] p-4">
+const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (view: ViewState) => void, onRequestLogin: (type: 'ADMIN' | 'RESIDENT') => void, background: Background }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: background.gradient }}>
     <div className="max-w-md w-full space-y-8 text-center">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-stone-100">
+      <div className="bg-white/95 backdrop-blur-sm p-10 rounded-[2.5rem] shadow-2xl border border-white/50">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
             <Home className="w-10 h-10" />
         </div>
         <h1 className="text-4xl font-bold text-primary mb-3 tracking-tight">Sober Solutions</h1>
-        <p className="text-stone-500 mb-10 text-lg">Community. Recovery. Purpose.</p>
+        <p className="text-stone-500 mb-2 text-lg">Community. Recovery. Purpose.</p>
+        <p className="text-xs text-stone-400 italic mb-8">{background.theme}</p>
         
         <div className="space-y-4">
           <Button onClick={() => onNavigate('INTAKE')} className="w-full justify-between group py-4" variant="outline">
@@ -2377,6 +2379,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<Client | null>(null);
   const [authModal, setAuthModal] = useState<{ open: boolean, type: 'ADMIN' | 'RESIDENT' }>({ open: false, type: 'ADMIN' });
   const [isInitializing, setIsInitializing] = useState(true);
+  const [background, setBackground] = useState<Background>(getRandomBackground());
 
   // --- Firebase Initialization & Real-time Listeners ---
 
@@ -2512,6 +2515,8 @@ export default function App() {
 
   const handleLoginSuccess = (user?: Client) => {
     setAuthModal({ open: false, type: 'ADMIN' });
+    // Change background on each login for variety and inspiration
+    setBackground(getRandomBackground());
     if (user) {
       setCurrentUser(user);
       setView('CLIENT_PORTAL');
@@ -2538,9 +2543,10 @@ export default function App() {
       />
 
       {view === 'LANDING' && (
-        <LandingPage 
-          onNavigate={setView} 
+        <LandingPage
+          onNavigate={setView}
           onRequestLogin={(type) => setAuthModal({ open: true, type })}
+          background={background}
         />
       )}
 

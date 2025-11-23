@@ -149,5 +149,29 @@ export interface CheckInLog {
   notes?: string;       // System notes
 }
 
+export interface ChoreCompletion {
+  id: string;
+  completedAt: string;
+  completedBy: string; // Client ID
+  photoUrl?: string; // Optional photo proof
+  notes?: string;
+}
+
+export interface Chore {
+  id: string;
+  title: string;
+  description: string;
+  assignedTo: string[]; // Array of client IDs
+  createdBy: string; // Admin name
+  createdAt: string;
+  dueDate?: string; // Optional due date
+  recurring: boolean; // If true, chore repeats until reassigned
+  recurrenceType?: 'daily' | 'weekly' | 'monthly'; // How often it recurs
+  reminderTime?: string; // Time of day for reminder (24h format, e.g., "18:00")
+  completions: ChoreCompletion[]; // History of completions
+  status: 'pending' | 'completed' | 'overdue';
+  houseId?: string; // Optional: chore specific to a house
+}
+
 export type ViewState = 'LANDING' | 'INTAKE' | 'ADMIN_DASHBOARD' | 'CLIENT_PORTAL';
-export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT';
+export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT' | 'CHORES';
