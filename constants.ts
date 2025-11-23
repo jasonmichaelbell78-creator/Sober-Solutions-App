@@ -16,7 +16,7 @@ export const MOCK_HOUSES: House[] = [
     id: 'h_elberta',
     name: 'Elberta House',
     address: '319 Elberta St. Nashville, TN 37210',
-    image: 'https://picsum.photos/800/600?random=1',
+    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&h=600&fit=crop',
     rooms: Array.from({ length: 7 }, (_, i) => ({
       id: `r-elberta-${i+1}`,
       name: `Room ${i+1}`,
@@ -27,7 +27,7 @@ export const MOCK_HOUSES: House[] = [
     id: 'h_thunderbird',
     name: 'Thunderbird House',
     address: '6536 Thunderbird Dr. Nashville, TN 37209',
-    image: 'https://picsum.photos/800/600?random=2',
+    image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&h=600&fit=crop',
     rooms: [
       { id: 'r-tb-1', name: 'Room 1', beds: createBeds(1, 1) },
       { id: 'r-tb-2', name: 'Room 2', beds: createBeds(1, 1) },

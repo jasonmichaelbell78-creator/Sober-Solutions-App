@@ -126,7 +126,7 @@ export interface IntakeForm {
 
 export interface Client extends IntakeForm {
   id: string;
-  status: 'active' | 'alumni' | 'discharged';
+  status: 'pending' | 'active' | 'alumni' | 'discharged';
   assignedBedId: string | null;
   assignedHouseId: string | null;
   checkInLogs: CheckInLog[];
