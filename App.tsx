@@ -762,11 +762,11 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                      </div>
 
                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                             <h4 className="font-bold text-stone-700 text-lg">Current Medications (Include OTC)</h4>
                             {!readOnly && (
-                                <Button type="button" onClick={() => setData({...data, medications: [...data.medications, { name: '', dose: '', doctor: '', contact: '', reason: '' }]})} size="sm" variant="secondary">
-                                    <Plus className="w-4 h-4 mr-1" /> Add Med
+                                <Button type="button" onClick={() => setData({...data, medications: [...data.medications, { name: '', dose: '', doctor: '', contact: '', reason: '' }]})} size="md" variant="secondary" className="w-full sm:w-auto">
+                                    <Plus className="w-5 h-5 mr-2" /> Add Medication
                                 </Button>
                             )}
                         </div>
