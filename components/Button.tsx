@@ -14,7 +14,7 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading,
   ...props
 }) => {
-  const baseStyles = "rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm [&>svg]:flex-shrink-0";
+  const baseStyles = "rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm";
 
   const sizeStyles = {
     sm: "px-3 py-1.5 text-sm",
@@ -23,10 +23,26 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variants = {
-    primary: "bg-[#588157] text-white hover:bg-[#4A6E49] shadow-[#588157]/20 hover:shadow-[#588157]/40 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100",
-    secondary: "bg-[#BC4749] text-white hover:bg-[#A0393B] shadow-[#BC4749]/20 hover:shadow-[#BC4749]/40 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100",
-    outline: "border-2 border-stone-200 text-stone-600 hover:border-[#588157] hover:text-[#588157] bg-white [&>svg]:!opacity-100 [&_svg]:!opacity-100",
-    danger: "bg-red-500 text-white hover:bg-red-600 [&>svg]:!text-white [&>svg]:!opacity-100 [&_svg]:!text-white [&_svg]:!opacity-100"
+    primary: "bg-[#588157] text-white hover:bg-[#4A6E49]",
+    secondary: "bg-[#BC4749] text-white hover:bg-[#A0393B]",
+    outline: "border-2 border-stone-200 text-stone-600 hover:border-[#588157] hover:text-[#588157] bg-white",
+    danger: "bg-red-500 text-white hover:bg-red-600"
+  };
+
+  // Clone children and add white color to any SVG icons
+  const processChildren = (children: React.ReactNode): React.ReactNode => {
+    return React.Children.map(children, child => {
+      if (React.isValidElement(child)) {
+        // If it's an SVG or icon component, add color prop
+        if (child.type === 'svg' || (typeof child.type !== 'string' && child.type)) {
+          return React.cloneElement(child as React.ReactElement<any>, {
+            color: variant === 'outline' ? undefined : 'white',
+            style: { color: variant === 'outline' ? undefined : 'white' }
+          });
+        }
+      }
+      return child;
+    });
   };
 
   return (
@@ -38,7 +54,7 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
       ) : null}
-      {children}
+      {processChildren(children)}
     </button>
   );
 };
