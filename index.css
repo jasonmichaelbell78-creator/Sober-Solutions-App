@@ -50,8 +50,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #78716c;
 }
-
-/* Hide scrollbar for horizontal navigation tabs */
-.overflow-x-auto::-webkit-scrollbar {
-  display: none;
-}
