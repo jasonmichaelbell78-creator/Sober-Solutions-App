@@ -484,7 +484,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} color="white" strokeWidth={2.5} absoluteStrokeWidth />
+            <User size={20} strokeWidth={2.5} absoluteStrokeWidth />
           </Button>
         </div>
       </div>
@@ -779,7 +779,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                                     variant="primary"
                                     className="w-full sm:w-auto shrink-0"
                                 >
-                                    <Plus size={20} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-2" /> Add Medication
+                                    <Plus size={20} strokeWidth={2.5} absoluteStrokeWidth className="mr-2" /> Add Medication
                                 </Button>
                             )}
                         </div>
@@ -1168,7 +1168,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                       onUpdateClient(updatedClient);
                                    }}
                                 >
-                                   <Plus size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" /> Add Medication
+                                   <Plus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" /> Add Medication
                                 </Button>
                              )}
                           </div>
@@ -1392,7 +1392,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
                                 <Button variant="danger" onClick={handleDischargeSubmit}>
-                                  <DoorOpen size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
+                                  <DoorOpen size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                   Finalize Discharge
                                 </Button>
                             </div>
@@ -1995,7 +1995,7 @@ const AdminDashboard = ({
                                  </div>
                                  <div className="flex gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
-                                      <UserPlus size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
+                                      <UserPlus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                       Admit to House
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
