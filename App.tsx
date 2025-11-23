@@ -477,7 +477,7 @@ const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewSt
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5" stroke="white" strokeWidth={2} />
           </Button>
         </div>
       </div>
@@ -772,7 +772,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                                     variant="primary"
                                     className="w-full sm:w-auto shrink-0"
                                 >
-                                    <Plus className="w-5 h-5 mr-2" /> Add Medication
+                                    <Plus className="w-5 h-5 mr-2" stroke="white" strokeWidth={2} /> Add Medication
                                 </Button>
                             )}
                         </div>
@@ -1161,7 +1161,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                       onUpdateClient(updatedClient);
                                    }}
                                 >
-                                   <Plus className="w-4 h-4 mr-1" /> Add Medication
+                                   <Plus className="w-4 h-4 mr-1" stroke="white" strokeWidth={2} /> Add Medication
                                 </Button>
                              )}
                           </div>
@@ -1385,7 +1385,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
                                 <Button variant="danger" onClick={handleDischargeSubmit}>
-                                  <DoorOpen className="w-4 h-4 mr-1" />
+                                  <DoorOpen className="w-4 h-4 mr-1" stroke="white" strokeWidth={2} />
                                   Finalize Discharge
                                 </Button>
                             </div>
@@ -1970,7 +1970,7 @@ const AdminDashboard = ({
                                  </div>
                                  <div className="flex gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
-                                      <UserPlus className="w-4 h-4 mr-1" />
+                                      <UserPlus className="w-4 h-4 mr-1" stroke="white" strokeWidth={2} />
                                       Admit to House
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
@@ -2148,15 +2148,24 @@ const ClientPortal = ({
 
       try {
         // 1. Try High Accuracy (GPS) - Preferred for validation
-        // Timeout 5s to fail fast if no GPS lock
-        position = await getPosition({ enableHighAccuracy: true, timeout: 5000 });
+        // Increased timeout to 15s for better GPS lock
+        // maximumAge: 0 ensures fresh reading (no cache)
+        position = await getPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        });
       } catch (err: any) {
         // 2. Fallback to Low Accuracy (WiFi/Cell Tower) - Better indoors, less battery
-        // Only if error is Timeout (3) or Unavailable (2). 
+        // Only if error is Timeout (3) or Unavailable (2).
         // If Permission Denied (1), we stop immediately.
         if (err.code === 2 || err.code === 3) {
           console.warn("High accuracy GPS failed, attempting low accuracy fallback...");
-          position = await getPosition({ enableHighAccuracy: false, timeout: 10000 });
+          position = await getPosition({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 0
+          });
         } else {
           throw err;
         }
