@@ -477,7 +477,7 @@ const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewSt
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User className="w-5 h-5 text-white/70 group-hover:text-white" />
+            <User className="w-5 h-5" />
           </Button>
         </div>
       </div>
@@ -765,7 +765,13 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                             <h4 className="font-bold text-stone-700 text-lg">Current Medications (Include OTC)</h4>
                             {!readOnly && (
-                                <Button type="button" onClick={() => setData({...data, medications: [...data.medications, { name: '', dose: '', doctor: '', contact: '', reason: '' }]})} size="md" variant="secondary" className="w-full sm:w-auto">
+                                <Button
+                                    type="button"
+                                    onClick={() => setData({...data, medications: [...data.medications, { name: '', dose: '', doctor: '', contact: '', reason: '' }]})}
+                                    size="lg"
+                                    variant="primary"
+                                    className="w-full sm:w-auto shrink-0"
+                                >
                                     <Plus className="w-5 h-5 mr-2" /> Add Medication
                                 </Button>
                             )}
@@ -1570,54 +1576,62 @@ const AdminDashboard = ({
     setEditingItem(null);
   };
 
-  const handleConfirmAdmission = () => {
+  const handleConfirmAdmission = async () => {
     if (!admittingClient || !selectionDetails) return;
 
-    // 1. Clear any existing bed assignment for this resident (prevent duplication)
-    let housesAfterClear = houses.map(h => ({
-      ...h,
-      rooms: h.rooms.map(r => ({
-        ...r,
-        beds: r.beds.map(b =>
-          b.occupantId === admittingClient.id
-            ? { ...b, occupantId: null }
-            : b
-        )
-      }))
-    }));
+    try {
+      // 1. Clear any existing bed assignment for this resident (prevent duplication)
+      let housesAfterClear = houses.map(h => ({
+        ...h,
+        rooms: h.rooms.map(r => ({
+          ...r,
+          beds: r.beds.map(b =>
+            b.occupantId === admittingClient.id
+              ? { ...b, occupantId: null }
+              : b
+          )
+        }))
+      }));
 
-    // 2. Now assign to new bed
-    const updatedHouses = housesAfterClear.map(h => {
-        if (h.id !== selectionDetails.houseId) return h;
-        return {
-            ...h,
-            rooms: h.rooms.map(r => {
-                if (r.id !== selectionDetails.roomId) return r;
-                return {
-                    ...r,
-                    beds: r.beds.map(b => {
-                        if (b.id !== selectionDetails.bedId) return b;
-                        return { ...b, occupantId: admittingClient.id };
-                    })
-                };
-            })
-        };
-    });
+      // 2. Now assign to new bed
+      const updatedHouses = housesAfterClear.map(h => {
+          if (h.id !== selectionDetails.houseId) return h;
+          return {
+              ...h,
+              rooms: h.rooms.map(r => {
+                  if (r.id !== selectionDetails.roomId) return r;
+                  return {
+                      ...r,
+                      beds: r.beds.map(b => {
+                          if (b.id !== selectionDetails.bedId) return b;
+                          return { ...b, occupantId: admittingClient.id };
+                      })
+                  };
+              })
+          };
+      });
 
-    // 3. Update Client (Set Status & Assignment)
-    const updatedClient = {
-        ...admittingClient,
-        status: 'active' as const,
-        assignedHouseId: selectionDetails.houseId,
-        assignedBedId: selectionDetails.bedId,
-        drugTestLogs: [],
-        dischargeRecord: undefined
-    };
+      // 3. Update Client (Set Status & Assignment)
+      const updatedClient = {
+          ...admittingClient,
+          status: 'active' as const,
+          assignedHouseId: selectionDetails.houseId,
+          assignedBedId: selectionDetails.bedId,
+          drugTestLogs: admittingClient.drugTestLogs || [],
+          dischargeRecord: undefined
+      };
 
-    onUpdateHouses(updatedHouses);
-    onUpdateClient(updatedClient);
-    setAdmittingClient(null);
-    setSelectionDetails(null);
+      // 4. Save to Firebase (await both operations)
+      await onUpdateHouses(updatedHouses);
+      await onUpdateClient(updatedClient);
+
+      // 5. Close modal only after successful save
+      setAdmittingClient(null);
+      setSelectionDetails(null);
+    } catch (error) {
+      console.error('Error admitting resident:', error);
+      alert('Error admitting resident. Please try again.');
+    }
   };
 
   const handleUpdateClient = (updatedClient: Client) => {
@@ -1626,42 +1640,44 @@ const AdminDashboard = ({
   };
 
   const handleDischargeClient = async (client: Client, record: DischargeRecord) => {
-    // 1. Update Bed First (Remove occupant) - must do this before clearing client's bed assignment
-    if (client.assignedHouseId && client.assignedBedId) {
-        const updatedHouses = houses.map(h => {
-            if (h.id !== client.assignedHouseId) return h;
-            return {
-                ...h,
-                rooms: h.rooms.map(r => {
-                    return {
-                        ...r,
-                        beds: r.beds.map(b => {
-                            if (b.id !== client.assignedBedId) return b;
-                            return { ...b, occupantId: null };
-                        })
-                    };
-                })
-            };
-        });
+    try {
+      // 1. Remove resident from ALL beds across ALL houses (fixes duplication bug)
+      const updatedHouses = houses.map(h => ({
+        ...h,
+        rooms: h.rooms.map(r => ({
+          ...r,
+          beds: r.beds.map(b =>
+            b.occupantId === client.id
+              ? { ...b, occupantId: null }
+              : b
+          )
+        }))
+      }));
 
-        // Update house in Firestore
-        const targetHouse = updatedHouses.find(h => h.id === client.assignedHouseId);
-        if (targetHouse) {
-            await setHouse(targetHouse);
-        }
+      // 2. Update all affected houses in Firestore
+      const affectedHouses = updatedHouses.filter((h, idx) => {
+        // Check if this house has any different beds than the original
+        const originalHouse = houses[idx];
+        return JSON.stringify(h) !== JSON.stringify(originalHouse);
+      });
+
+      await Promise.all(affectedHouses.map(house => setHouse(house)));
+
+      // 3. Now Update Client - discharge status and clear bed assignment
+      const updatedClient: Client = {
+        ...client,
+        status: record.type === 'Successful Completion' ? 'alumni' : 'discharged',
+        assignedBedId: null,
+        assignedHouseId: null,
+        dischargeRecord: record
+      };
+
+      await updateClient(client.id, updatedClient);
+      setViewingClient(null); // Close modal
+    } catch (error) {
+      console.error('Error discharging client:', error);
+      alert('Error discharging resident. Please try again.');
     }
-
-    // 2. Now Update Client - discharge status and clear bed assignment
-    const updatedClient: Client = {
-      ...client,
-      status: record.type === 'Successful Completion' ? 'alumni' : 'discharged',
-      assignedBedId: null,
-      assignedHouseId: null,
-      dischargeRecord: record
-    };
-
-    await updateClient(client.id, updatedClient);
-    setViewingClient(null); // Close modal
   };
 
   const handleGenerateReport = async () => {
@@ -1875,12 +1891,12 @@ const AdminDashboard = ({
                                      )}
                                   </div>
                                   {occupant ? (
-                                    <div className="mt-1 font-bold text-primary text-base truncate cursor-pointer hover:underline flex items-center gap-2" onClick={() => setViewingClient(occupant)}>
-                                        <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                    <div className="mt-2 font-bold text-primary text-lg truncate cursor-pointer hover:underline flex items-center gap-2" onClick={() => setViewingClient(occupant)}>
+                                        <div className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0"></div>
                                         {occupant.firstName} {occupant.lastName}
                                     </div>
                                   ) : (
-                                    <div className="mt-1 text-sm text-stone-400 italic">Vacant</div>
+                                    <div className="mt-2 text-sm text-stone-400 italic">Vacant</div>
                                   )}
                                 </div>
                               );
