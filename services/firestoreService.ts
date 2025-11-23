@@ -80,6 +80,25 @@ export const setHouse = async (house: House) => {
 // ============================================
 
 /**
+ * Initialize clients in Firestore (run once on first setup)
+ */
+export const initializeClients = async (clients: Client[]) => {
+  const batch = writeBatch(db);
+
+  clients.forEach(client => {
+    const clientRef = doc(db, CLIENTS_COLLECTION, client.id);
+    batch.set(clientRef, {
+      ...client,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+  });
+
+  await batch.commit();
+  console.log('Clients initialized in Firestore');
+};
+
+/**
  * Create a new client (from intake form)
  */
 export const createClient = async (client: Client): Promise<string> => {

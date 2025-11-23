@@ -10,7 +10,9 @@ import {
   setClient,
   setHouse,
   initializeHouses,
+  initializeClients,
   isHousesCollectionEmpty,
+  isClientsCollectionEmpty,
   addCheckInLog,
   subscribeToChores,
   createChore,
@@ -2961,6 +2963,14 @@ export default function App() {
         if (housesEmpty) {
           console.log('First-time setup: Initializing houses in Firestore...');
           await initializeHouses(MOCK_HOUSES);
+        }
+
+        // Check if clients collection is empty (first-time setup)
+        const clientsEmpty = await isClientsCollectionEmpty();
+
+        if (clientsEmpty) {
+          console.log('First-time setup: Initializing clients in Firestore...');
+          await initializeClients(MOCK_CLIENTS);
         }
 
         // Set up real-time listeners
