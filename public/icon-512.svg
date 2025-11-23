@@ -1,14 +1,25 @@
 <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" fill="#5D8C5A" rx="102.4"/>
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" fill="#588157" rx="102.4"/>
 
-  <!-- Steps Icon (simplified) -->
-  <g fill="#F5F5DC">
-    <rect x="102.4" y="307.2" width="128" height="40.96" rx="10.24"/>
-    <rect x="179.2" y="230.4" width="128" height="40.96" rx="10.24"/>
-    <rect x="256" y="153.6" width="128" height="40.96" rx="10.24"/>
+  <!-- House shape -->
+  <g fill="#FDFCF8">
+    <!-- Roof -->
+    <path d="M 256 102.4 L 375.47 204.8 L 136.53 204.8 Z"/>
+    <!-- House body -->
+    <rect x="153.6" y="204.8" width="204.8" height="179.2" rx="10.24"/>
+    <!-- Door -->
+    <rect x="215.04" y="281.6" width="81.92" height="102.4" fill="#588157" rx="7.68"/>
+    <!-- Window (left) -->
+    <rect x="179.2" y="230.4" width="51.2" height="38.4" fill="#588157" rx="5.12"/>
+    <!-- Window (right) -->
+    <rect x="281.6" y="230.4" width="51.2" height="38.4" fill="#588157" rx="5.12"/>
   </g>
 
-  <!-- Text "SS" -->
-  <text x="256" y="384" font-family="Arial, sans-serif" font-size="153.6" font-weight="bold" fill="#F5F5DC" text-anchor="middle">SS</text>
+  <!-- Steps/stairs symbol at bottom -->
+  <g fill="#A3B18A" opacity="0.8">
+    <rect x="128" y="435.2" width="76.8" height="25.6"/>
+    <rect x="179.2" y="409.6" width="76.8" height="25.6"/>
+    <rect x="230.4" y="384" width="76.8" height="25.6"/>
+  </g>
 </svg>
