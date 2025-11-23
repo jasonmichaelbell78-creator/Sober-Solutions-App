@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { House, Client, ViewState, AdminTab, IntakeForm, CheckInType, CheckInLog, DrugTestLog, DischargeRecord } from './types';
 import { MOCK_HOUSES, MOCK_CLIENTS, ADMIN_PASSWORD } from './constants';
 import { generateDailyReport, analyzeIntakeRisk } from './services/geminiService';
+import {
+  subscribeToHouses,
+  subscribeToClients,
+  createClient,
+  updateClient,
+  setClient,
+  setHouse,
+  initializeHouses,
+  isHousesCollectionEmpty,
+  addCheckInLog
+} from './services/firestoreService';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import {
@@ -195,20 +206,20 @@ const AgreementSection = ({ readOnly, title, description, checked, onChange, ful
 
 // --- Sub-Components ---
 
-const LoginModal = ({ 
-  isOpen, 
-  onClose, 
-  type, 
-  clients, 
-  setClients, 
-  onLoginSuccess 
-}: { 
-  isOpen: boolean, 
-  onClose: () => void, 
-  type: 'ADMIN' | 'RESIDENT', 
-  clients: Client[], 
-  setClients: (c: Client[]) => void, 
-  onLoginSuccess: (user?: Client) => void 
+const LoginModal = ({
+  isOpen,
+  onClose,
+  type,
+  clients,
+  onUpdateClient,
+  onLoginSuccess
+}: {
+  isOpen: boolean,
+  onClose: () => void,
+  type: 'ADMIN' | 'RESIDENT',
+  clients: Client[],
+  onUpdateClient: (client: Client) => Promise<void>,
+  onLoginSuccess: (user?: Client) => void
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -272,7 +283,7 @@ const LoginModal = ({
     }
   };
 
-  const handleCreatePassword = () => {
+  const handleCreatePassword = async () => {
     if (newPassword.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
@@ -281,11 +292,10 @@ const LoginModal = ({
       setError("Passwords do not match.");
       return;
     }
-    
+
     if (foundClient) {
       const updatedClient = { ...foundClient, password: newPassword };
-      const updatedList = clients.map(c => c.id === foundClient.id ? updatedClient : c);
-      setClients(updatedList);
+      await onUpdateClient(updatedClient);
       onLoginSuccess(updatedClient);
     }
   };
@@ -1173,20 +1183,18 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
   );
 };
 
-const AdminDashboard = ({ 
-  houses, 
-  setHouses, 
-  clients, 
-  setClients,
-  onNavigate, 
-  onUpdateHouses 
-}: { 
-  houses: House[], 
-  setHouses: (h: House[]) => void, 
-  clients: Client[], 
-  setClients: (c: Client[]) => void,
+const AdminDashboard = ({
+  houses,
+  clients,
+  onNavigate,
+  onUpdateHouses,
+  onUpdateClient
+}: {
+  houses: House[],
+  clients: Client[],
   onNavigate: (v: ViewState) => void,
-  onUpdateHouses: (houses: House[]) => void
+  onUpdateHouses: (houses: House[]) => void,
+  onUpdateClient: (client: Client) => Promise<void>
 }) => {
   const [tab, setTab] = useState<AdminTab>('HOUSES');
   const [viewingClient, setViewingClient] = useState<Client | null>(null); // Updated to generic viewing client
@@ -1285,27 +1293,24 @@ const AdminDashboard = ({
         };
     });
 
-    // 2. Update Clients (Set Status & Assignment)
-    const updatedClients = clients.map(c => {
-        if (c.id !== admittingClient.id) return c;
-        return {
-            ...c,
-            status: 'active' as const,
-            assignedHouseId: selectionDetails.houseId,
-            assignedBedId: selectionDetails.bedId,
-            drugTestLogs: [],
-            dischargeRecord: undefined
-        };
-    });
+    // 2. Update Client (Set Status & Assignment)
+    const updatedClient = {
+        ...admittingClient,
+        status: 'active' as const,
+        assignedHouseId: selectionDetails.houseId,
+        assignedBedId: selectionDetails.bedId,
+        drugTestLogs: [],
+        dischargeRecord: undefined
+    };
 
     onUpdateHouses(updatedHouses);
-    setClients(updatedClients);
+    onUpdateClient(updatedClient);
     setAdmittingClient(null);
     setSelectionDetails(null);
   };
 
   const handleUpdateClient = (updatedClient: Client) => {
-    setClients(clients.map(c => c.id === updatedClient.id ? updatedClient : c));
+    onUpdateClient(updatedClient);
     setViewingClient(updatedClient); // Keep modal updated
   };
 
@@ -1318,9 +1323,8 @@ const AdminDashboard = ({
         assignedHouseId: null,
         dischargeRecord: record
     };
-    
-    const newClientList = clients.map(c => c.id === client.id ? updatedClient : c);
-    setClients(newClientList);
+
+    onUpdateClient(updatedClient);
 
     // 2. Update Bed (Remove occupant)
     if (client.assignedHouseId && client.assignedBedId) {
@@ -1604,7 +1608,7 @@ const AdminDashboard = ({
                                  <div className="flex gap-3">
                                     <Button size="sm" variant="primary" onClick={() => {
                                       const updatedClient = { ...client, status: 'active' as const };
-                                      setClients(clients.map(c => c.id === client.id ? updatedClient : c));
+                                      onUpdateClient(updatedClient);
                                     }}>
                                       <CheckCircle className="w-4 h-4 mr-1" /> Approve
                                     </Button>
@@ -1983,58 +1987,142 @@ const ClientPortal = ({
 
 export default function App() {
   const [view, setView] = useState<ViewState>('LANDING');
-  const [houses, setHouses] = useState<House[]>(MOCK_HOUSES);
-  const [clients, setClients] = useState<Client[]>(MOCK_CLIENTS);
+  const [houses, setHouses] = useState<House[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [currentUser, setCurrentUser] = useState<Client | null>(null);
-  const [authModal, setAuthModal] = useState<{ open: boolean, type: 'ADMIN' | 'RESIDENT' }>({ open: false, type: 'ADMIN' }); 
+  const [authModal, setAuthModal] = useState<{ open: boolean, type: 'ADMIN' | 'RESIDENT' }>({ open: false, type: 'ADMIN' });
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // --- Firebase Initialization & Real-time Listeners ---
+
+  useEffect(() => {
+    let unsubscribeHouses: (() => void) | undefined;
+    let unsubscribeClients: (() => void) | undefined;
+
+    const initializeFirebase = async () => {
+      try {
+        // Check if houses collection is empty (first-time setup)
+        const housesEmpty = await isHousesCollectionEmpty();
+
+        if (housesEmpty) {
+          console.log('First-time setup: Initializing houses in Firestore...');
+          await initializeHouses(MOCK_HOUSES);
+        }
+
+        // Set up real-time listeners
+        unsubscribeHouses = subscribeToHouses((housesData) => {
+          setHouses(housesData);
+        });
+
+        unsubscribeClients = subscribeToClients((clientsData) => {
+          setClients(clientsData);
+
+          // Update currentUser if they're in the updated clients
+          if (currentUser) {
+            const updatedCurrentUser = clientsData.find(c => c.id === currentUser.id);
+            if (updatedCurrentUser) {
+              setCurrentUser(updatedCurrentUser);
+            }
+          }
+        });
+
+        setIsInitializing(false);
+      } catch (error) {
+        console.error('Error initializing Firebase:', error);
+        // Fallback to mock data if Firebase fails
+        setHouses(MOCK_HOUSES);
+        setClients(MOCK_CLIENTS);
+        setIsInitializing(false);
+      }
+    };
+
+    initializeFirebase();
+
+    // Cleanup listeners on unmount
+    return () => {
+      if (unsubscribeHouses) unsubscribeHouses();
+      if (unsubscribeClients) unsubscribeClients();
+    };
+  }, []);
+
+  // Show loading screen while initializing
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Home className="w-8 h-8 text-primary" />
+          </div>
+          <p className="text-stone-600 font-medium">Loading Sober Solutions...</p>
+        </div>
+      </div>
+    );
+  }
 
   // --- Handlers ---
 
   const handleIntakeSubmit = async (intakeData: IntakeForm) => {
-    // Optional: AI Analysis
-    await analyzeIntakeRisk(JSON.stringify(intakeData));
+    try {
+      // Optional: AI Analysis
+      await analyzeIntakeRisk(JSON.stringify(intakeData));
 
-    const newClient: Client = {
-      ...intakeData,
-      id: `c${Date.now()}`,
-      status: 'pending', // New applications start as pending and must be approved by admin
-      assignedBedId: null,
-      assignedHouseId: null, // Intentionally null until manager assigns them, but they have a targetHouseId
-      checkInLogs: [],
-      drugTestLogs: []
-    };
+      const newClient: Client = {
+        ...intakeData,
+        id: `c${Date.now()}`,
+        status: 'pending', // New applications start as pending and must be approved by admin
+        assignedBedId: null,
+        assignedHouseId: null, // Intentionally null until manager assigns them, but they have a targetHouseId
+        checkInLogs: [],
+        drugTestLogs: []
+      };
 
-    setClients([...clients, newClient]);
-    alert("Application submitted successfully! An admin will review your application.");
-    setView('LANDING');
+      // Save to Firebase - real-time listener will update local state
+      await createClient(newClient);
+      alert("Application submitted successfully! An admin will review your application.");
+      setView('LANDING');
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      alert("Error submitting application. Please try again.");
+    }
   };
 
   // Update houses logic (for renaming)
-  const handleUpdateHouses = (updatedHouses: House[]) => {
-    setHouses(updatedHouses);
+  const handleUpdateHouses = async (updatedHouses: House[]) => {
+    try {
+      // Save all updated houses to Firebase
+      await Promise.all(updatedHouses.map(house => setHouse(house)));
+      // Real-time listener will update local state
+    } catch (error) {
+      console.error('Error updating houses:', error);
+    }
   };
 
   // Handle resident check-in logic
-  const handleCheckIn = (log: CheckInLog) => {
+  const handleCheckIn = async (log: CheckInLog) => {
     if (!currentUser) return;
-    
-    const updatedClient = {
-      ...currentUser,
-      checkInLogs: [log, ...currentUser.checkInLogs]
-    };
 
-    // Update in main client list
-    setClients(clients.map(c => c.id === currentUser.id ? updatedClient : c));
-    // Update current user state
-    setCurrentUser(updatedClient);
+    try {
+      const updatedClient = {
+        ...currentUser,
+        checkInLogs: [log, ...currentUser.checkInLogs]
+      };
+
+      // Save to Firebase - real-time listener will update local state
+      await setClient(updatedClient);
+    } catch (error) {
+      console.error('Error recording check-in:', error);
+      alert("Error recording check-in. Please try again.");
+    }
   };
 
-  const handleClientUpdate = (updatedClient: Client) => {
-      setClients(clients.map(c => c.id === updatedClient.id ? updatedClient : c));
-      // If the updated client is the current user, update that too
-      if (currentUser && currentUser.id === updatedClient.id) {
-          setCurrentUser(updatedClient);
-      }
+  const handleClientUpdate = async (updatedClient: Client) => {
+    try {
+      // Save to Firebase - real-time listener will update local state
+      await setClient(updatedClient);
+    } catch (error) {
+      console.error('Error updating client:', error);
+      alert("Error updating resident. Please try again.");
+    }
   };
 
   const handleLoginSuccess = (user?: Client) => {
@@ -2055,12 +2143,12 @@ export default function App() {
         .prose p { margin-bottom: 1.25em; }
       `}</style>
       
-      <LoginModal 
-        isOpen={authModal.open} 
-        type={authModal.type} 
+      <LoginModal
+        isOpen={authModal.open}
+        type={authModal.type}
         onClose={() => setAuthModal({ ...authModal, open: false })}
         clients={clients}
-        setClients={setClients}
+        onUpdateClient={handleClientUpdate}
         onLoginSuccess={handleLoginSuccess}
       />
 
@@ -2080,13 +2168,12 @@ export default function App() {
       )}
 
       {view === 'ADMIN_DASHBOARD' && (
-        <AdminDashboard 
+        <AdminDashboard
            houses={houses}
-           setHouses={setHouses}
            clients={clients}
-           setClients={setClients}
            onNavigate={setView}
            onUpdateHouses={handleUpdateHouses}
+           onUpdateClient={handleClientUpdate}
         />
       )}
 
