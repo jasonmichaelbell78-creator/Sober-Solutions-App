@@ -344,3 +344,35 @@ export const addChoreCompletion = async (choreId: string, completion: ChoreCompl
     status: 'completed'
   });
 };
+
+// ============================================
+// SETTINGS CRUD OPERATIONS
+// ============================================
+
+const SETTINGS_COLLECTION = 'settings';
+const SETTINGS_DOC_ID = 'app-settings';
+
+export interface AppSettings {
+  adminPassword?: string;
+}
+
+/**
+ * Get app settings
+ */
+export const getSettings = async (): Promise<AppSettings> => {
+  const settingsRef = doc(db, SETTINGS_COLLECTION, SETTINGS_DOC_ID);
+  const settingsSnap = await getDoc(settingsRef);
+
+  if (settingsSnap.exists()) {
+    return settingsSnap.data() as AppSettings;
+  }
+  return {};
+};
+
+/**
+ * Update app settings
+ */
+export const updateSettings = async (settings: Partial<AppSettings>) => {
+  const settingsRef = doc(db, SETTINGS_COLLECTION, SETTINGS_DOC_ID);
+  await setDoc(settingsRef, settings, { merge: true });
+};

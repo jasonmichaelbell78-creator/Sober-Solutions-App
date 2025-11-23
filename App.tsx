@@ -19,7 +19,9 @@ import {
   createChore,
   updateChore,
   deleteChore,
-  addChoreCompletion
+  addChoreCompletion,
+  getSettings,
+  updateSettings
 } from './services/firestoreService';
 import { getRandomBackground, Background } from './backgrounds';
 import { Button } from './components/Button';
@@ -254,13 +256,23 @@ const LoginModal = ({
 
   if (!isOpen) return null;
 
-  const handleAdminLogin = () => {
-    const storedPassword = localStorage.getItem('adminPassword');
-    const correctPassword = storedPassword || ADMIN_PASSWORD;
-    if (password === correctPassword) {
-      onLoginSuccess();
-    } else {
-      setError("Incorrect password.");
+  const handleAdminLogin = async () => {
+    try {
+      const settings = await getSettings();
+      const correctPassword = settings.adminPassword || ADMIN_PASSWORD;
+      if (password === correctPassword) {
+        onLoginSuccess();
+      } else {
+        setError("Incorrect password.");
+      }
+    } catch (error) {
+      console.error('Error checking password:', error);
+      // Fallback to default if Firebase fails
+      if (password === ADMIN_PASSWORD) {
+        onLoginSuccess();
+      } else {
+        setError("Incorrect password.");
+      }
     }
   };
 
@@ -939,7 +951,14 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
   );
 };
 
-const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge }: { client: Client, houses: House[], onClose: () => void, onUpdateClient: (c: Client) => void, onDischarge: (c: Client, record: DischargeRecord) => void }) => {
+const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHouses, onDischarge }: {
+  client: Client,
+  houses: House[],
+  onClose: () => void,
+  onUpdateClient: (c: Client) => void,
+  onUpdateHouses: (houses: House[]) => Promise<void>,
+  onDischarge: (c: Client, record: DischargeRecord) => void
+}) => {
   const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'NOTES' | 'DISCHARGE'>('INFO');
   const [newUa, setNewUa] = useState<Partial<DrugTestLog>>({ type: 'Instant', result: 'Negative', notes: '' });
   const [dischargeForm, setDischargeForm] = useState<Partial<DischargeRecord>>({
@@ -1826,7 +1845,7 @@ const AdminDashboard = ({
   clients: Client[],
   chores: Chore[],
   onNavigate: (v: ViewState) => void,
-  onUpdateHouses: (houses: House[]) => void,
+  onUpdateHouses: (houses: House[]) => Promise<void>,
   onUpdateClient: (client: Client) => Promise<void>
 }) => {
   const [tab, setTab] = useState<AdminTab>('HOUSES');
@@ -2170,11 +2189,12 @@ const AdminDashboard = ({
 
         {/* Modal for Viewing Client Details (The new comprehensive screen) */}
         {viewingClient && (
-             <ClientDetailView 
-                client={viewingClient} 
-                houses={houses} 
+             <ClientDetailView
+                client={viewingClient}
+                houses={houses}
                 onClose={() => setViewingClient(null)}
                 onUpdateClient={handleUpdateClient}
+                onUpdateHouses={handleUpdateHouses}
                 onDischarge={handleDischargeClient}
              />
         )}
@@ -2800,7 +2820,7 @@ const AdminDashboard = ({
                     placeholder="Re-enter new password"
                   />
                 </div>
-                <Button onClick={() => {
+                <Button onClick={async () => {
                   if (newAdminPassword.length < 6) {
                     alert('Password must be at least 6 characters');
                     return;
@@ -2809,17 +2829,19 @@ const AdminDashboard = ({
                     alert('Passwords do not match');
                     return;
                   }
-                  // Store new password in localStorage
-                  localStorage.setItem('adminPassword', newAdminPassword);
-                  alert('Admin password updated successfully!');
-                  setNewAdminPassword('');
-                  setConfirmPassword('');
+                  try {
+                    // Store new password in Firebase (syncs across all devices)
+                    await updateSettings({ adminPassword: newAdminPassword });
+                    alert('Admin password updated successfully! This will now sync across all devices.');
+                    setNewAdminPassword('');
+                    setConfirmPassword('');
+                  } catch (error) {
+                    console.error('Error updating password:', error);
+                    alert('Error updating password. Please try again.');
+                  }
                 }}>
                   <Key className="w-4 h-4 mr-2" /> Update Password
                 </Button>
-                <p className="text-xs text-stone-500 mt-2">
-                  Current password: {localStorage.getItem('adminPassword') || 'admin (default)'}
-                </p>
               </div>
             </Card>
           </div>
