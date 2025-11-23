@@ -477,7 +477,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
           
           <Button onClick={() => onRequestLogin('ADMIN')} className="w-full justify-between group py-4" variant="primary">
             <span>House Manager Login</span>
-            <Activity className="w-5 h-5 text-white/60 group-hover:text-white" />
+            <Activity size={20} color="white" />
           </Button>
           
           <div className="relative my-8">
@@ -782,7 +782,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                                     variant="primary"
                                     className="w-full sm:w-auto shrink-0"
                                 >
-                                    <Plus size={20} /> Add Medication
+                                    <Plus size={20} color="white" /> Add Medication
                                 </Button>
                             )}
                         </div>
@@ -1177,7 +1177,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                       onUpdateClient(updatedClient);
                                    }}
                                 >
-                                   <Plus size={16} /> Add Medication
+                                   <Plus size={16} color="white" /> Add Medication
                                 </Button>
                              )}
                           </div>
@@ -1401,7 +1401,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
                                 <Button variant="danger" onClick={handleDischargeSubmit}>
-                                  <DoorOpen size={16} />
+                                  <DoorOpen size={16} color="white" />
                                   Finalize Discharge
                                 </Button>
                             </div>
@@ -2105,7 +2105,7 @@ const AdminDashboard = ({
                   houseId: selectedHouseId === 'ALL' ? '' : selectedHouseId
                 });
               }}>
-                <Plus className="w-4 h-4 mr-2" /> Create Chore
+                <Plus size={16} color="white" /> Create Chore
               </Button>
             </div>
 
@@ -2412,7 +2412,7 @@ const AdminDashboard = ({
                     }
                   }}
                 >
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save size={16} color="white" />
                   {editingChore ? 'Update Chore' : 'Create Chore'}
                 </Button>
               </div>
@@ -2705,7 +2705,7 @@ const ClientPortal = ({
                     Cancel
                   </Button>
                   <Button onClick={handleCompleteChore} className="flex-1">
-                    <CheckCircle className="w-4 h-4 mr-2" />
+                    <CheckCircle size={16} color="white" />
                     Mark Complete
                   </Button>
                 </div>
@@ -2889,7 +2889,7 @@ const ClientPortal = ({
                             }}
                             disabled={currentUser.status !== 'active'}
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
+                            <CheckCircle size={16} color="white" />
                             Mark Complete
                           </Button>
                         </div>
