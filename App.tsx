@@ -1225,11 +1225,11 @@ End of Resident File
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-hidden flex flex-col">
-
+    <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
+       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          
           {/* Header */}
-          <div className="bg-stone-50 p-4 md:p-8 border-b border-stone-200 flex justify-between items-start">
+          <div className="bg-stone-50 p-8 border-b border-stone-200 flex justify-between items-start">
              <div className="flex-1">
                 {editingName ? (
                   <div className="flex items-center gap-3 mb-3">
@@ -1255,19 +1255,19 @@ End of Resident File
                     </button>
                   </div>
                 ) : (
-                  <h2 className="text-xl md:text-3xl font-bold text-stone-800 flex flex-wrap items-center gap-2 md:gap-3 group">
+                  <h2 className="text-3xl font-bold text-stone-800 flex items-center gap-3 group">
                      <span>{client.firstName} {client.lastName}</span>
                      <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-primary p-1 rounded transition-all">
-                       <Pencil className="w-4 h-4 md:w-5 md:h-5"/>
+                       <Pencil className="w-5 h-5"/>
                      </button>
-                     <span className={`text-xs md:text-sm px-2 md:px-3 py-1 rounded-full font-bold tracking-wide ${client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-600'}`}>
+                     <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-wide ${client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-600'}`}>
                        {client.status.toUpperCase()}
                      </span>
                   </h2>
                 )}
-                <p className="text-stone-500 text-xs md:text-sm mt-2 flex flex-wrap items-center gap-2 md:gap-4">
+                <p className="text-stone-500 mt-2 flex items-center gap-4">
                    <span className="font-medium bg-white px-2 py-1 rounded border border-stone-200">House: {houses.find(h => h.id === client.assignedHouseId)?.name || 'Unassigned'}</span>
-                   <span className="bg-white px-2 py-1 rounded border border-stone-200">Sober: {client.soberDate}</span>
+                   <span className="bg-white px-2 py-1 rounded border border-stone-200">Sober Date: {client.soberDate}</span>
                 </p>
              </div>
              <div className="flex gap-2">
@@ -1279,31 +1279,31 @@ End of Resident File
           </div>
 
           {/* Navigation */}
-          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto scrollbar-hide min-h-[60px]">
-              <button onClick={() => setTab('INFO')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto scrollbar-hide" style={{scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch'}}>
+              <button onClick={() => setTab('INFO')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Info
               </button>
-              <button onClick={() => setTab('MEDS')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('MEDS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <Plus className="w-4 h-4"/> Meds
               </button>
-              <button onClick={() => setTab('UA')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('UA')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FlaskConical className="w-4 h-4"/> Tests
               </button>
-              <button onClick={() => setTab('LOGS')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('LOGS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <History className="w-4 h-4"/> Logs
               </button>
-              <button onClick={() => setTab('NOTES')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('NOTES')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Notes
               </button>
               {client.status === 'active' && (
-                <button onClick={() => setTab('DISCHARGE')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                <button onClick={() => setTab('DISCHARGE')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                    <DoorOpen className="w-4 h-4"/> Discharge
                 </button>
               )}
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto bg-stone-50/50 p-4 md:p-8">
+          <div className="flex-1 overflow-y-auto bg-stone-50/50 p-8">
               
               {tab === 'INFO' && (
                  <>
