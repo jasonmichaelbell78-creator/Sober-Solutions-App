@@ -1279,24 +1279,24 @@ End of Resident File
           </div>
 
           {/* Navigation */}
-          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto" style={{scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch'}}>
-              <button onClick={() => setTab('INFO')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto scrollbar-hide" style={{scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch'}}>
+              <button onClick={() => setTab('INFO')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Info
               </button>
-              <button onClick={() => setTab('MEDS')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('MEDS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'MEDS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <Plus className="w-4 h-4"/> Meds
               </button>
-              <button onClick={() => setTab('UA')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('UA')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'UA' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FlaskConical className="w-4 h-4"/> Tests
               </button>
-              <button onClick={() => setTab('LOGS')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('LOGS')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'LOGS' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <History className="w-4 h-4"/> Logs
               </button>
-              <button onClick={() => setTab('NOTES')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+              <button onClick={() => setTab('NOTES')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'NOTES' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Notes
               </button>
               {client.status === 'active' && (
-                <button onClick={() => setTab('DISCHARGE')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
+                <button onClick={() => setTab('DISCHARGE')} className={`px-4 md:px-6 py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${tab === 'DISCHARGE' ? 'border-red-500 text-red-600' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                    <DoorOpen className="w-4 h-4"/> Discharge
                 </button>
               )}
