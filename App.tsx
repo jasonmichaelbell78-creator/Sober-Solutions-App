@@ -2461,25 +2461,32 @@ const AdminDashboard = ({
   );
 };
 
-const ClientPortal = ({ 
-  currentUser, 
-  onNavigate, 
+const ClientPortal = ({
+  currentUser,
+  chores,
+  onNavigate,
   onCheckIn,
-  onUpdateClient 
-}: { 
-  currentUser: Client, 
-  onNavigate: (v: ViewState) => void, 
+  onUpdateClient
+}: {
+  currentUser: Client,
+  chores: Chore[],
+  onNavigate: (v: ViewState) => void,
   onCheckIn: (log: CheckInLog) => void,
-  onUpdateClient: (c: Client) => void 
+  onUpdateClient: (c: Client) => void
 }) => {
   const [checkInModal, setCheckInModal] = useState<{ open: boolean, type: CheckInType | null }>({ open: false, type: null });
   const [checkInData, setCheckInData] = useState({ locationName: '', comment: '' });
   const [gpsLoading, setGpsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+
   // Password Change State
   const [isChangePassOpen, setIsChangePassOpen] = useState(false);
   const [newPass, setNewPass] = useState('');
+
+  // Chore Completion State
+  const [completingChore, setCompletingChore] = useState<Chore | null>(null);
+  const [choreCompletionNotes, setChoreCompletionNotes] = useState('');
+  const [chorePhoto, setChorePhoto] = useState<File | null>(null);
 
   const initiateCheckIn = (type: CheckInType) => {
     setCheckInData({ locationName: '', comment: '' });
@@ -2570,6 +2577,34 @@ const ClientPortal = ({
      alert("Password updated successfully.");
   };
 
+  const handleCompleteChore = async () => {
+    if (!completingChore) return;
+
+    try {
+      // Create completion record
+      const completion: ChoreCompletion = {
+        id: `completion_${Date.now()}`,
+        completedAt: new Date().toISOString(),
+        completedBy: currentUser.id,
+        notes: choreCompletionNotes || undefined,
+        photoUrl: undefined // Photo upload would be implemented with Firebase Storage
+      };
+
+      // Add completion to chore
+      await addChoreCompletion(completingChore.id, completion);
+
+      // Reset state
+      setCompletingChore(null);
+      setChoreCompletionNotes('');
+      setChorePhoto(null);
+
+      alert('Chore marked as complete!');
+    } catch (error) {
+      console.error('Error completing chore:', error);
+      alert('Error completing chore. Please try again.');
+    }
+  };
+
   return (
       <div className="min-h-screen bg-cream pb-20">
         {/* Change Password Modal */}
@@ -2595,6 +2630,63 @@ const ClientPortal = ({
                      </div>
                 </div>
             </div>
+        )}
+
+        {/* Chore Completion Modal */}
+        {completingChore && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+              <h3 className="text-xl font-bold text-stone-800 mb-6">Complete Chore</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-bold text-stone-700 mb-2">Chore</p>
+                  <p className="text-lg font-bold text-primary">{completingChore.title}</p>
+                  <p className="text-sm text-stone-600 mt-1">{completingChore.description}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Notes (Optional)</label>
+                  <textarea
+                    rows={3}
+                    className={INPUT_CLASS}
+                    placeholder="Add any notes about completing this chore..."
+                    value={choreCompletionNotes}
+                    onChange={e => setChoreCompletionNotes(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Photo Proof (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className={INPUT_CLASS}
+                    onChange={e => setChorePhoto(e.target.files?.[0] || null)}
+                  />
+                  <p className="text-xs text-stone-500 mt-1">Upload a photo showing the completed work</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCompletingChore(null);
+                      setChoreCompletionNotes('');
+                      setChorePhoto(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCompleteChore} className="flex-1">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Mark Complete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Check In Modal */}
@@ -2703,6 +2795,119 @@ const ClientPortal = ({
                 </div>
                 <span className="font-bold text-stone-700 text-lg">Meeting Check-In</span>
             </button>
+          </div>
+
+          {/* My Chores Section */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">My Chores</h3>
+            {chores.filter(c => c.assignedTo.includes(currentUser.id)).length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 text-center">
+                <ClipboardCheck className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                <p className="text-stone-500 italic">No chores assigned yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {chores
+                  .filter(c => c.assignedTo.includes(currentUser.id))
+                  .map(chore => {
+                    const isCompleted = chore.status === 'completed';
+                    const isOverdue = chore.status === 'overdue';
+                    const lastCompletion = chore.completions && chore.completions.length > 0
+                      ? chore.completions[chore.completions.length - 1]
+                      : null;
+
+                    return (
+                      <div key={chore.id} className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200">
+                        <div className="flex justify-between items-start gap-4 mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-bold text-lg text-stone-800">{chore.title}</h4>
+                              {isCompleted && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
+                                  Complete
+                                </span>
+                              )}
+                              {isOverdue && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">
+                                  Overdue
+                                </span>
+                              )}
+                              {chore.recurring && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-stone-600 text-sm mb-3">{chore.description}</p>
+
+                            {chore.reminderTime && (
+                              <div className="flex items-center gap-2 text-xs text-stone-500 mb-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>Reminder at {chore.reminderTime}</span>
+                              </div>
+                            )}
+
+                            {lastCompletion && (
+                              <div className="flex items-center gap-2 text-xs text-stone-500">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>Last completed {new Date(lastCompletion.completedAt).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setCompletingChore(chore);
+                              setChoreCompletionNotes('');
+                              setChorePhoto(null);
+                            }}
+                            disabled={currentUser.status !== 'active'}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Mark Complete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          {/* All Chores Section (View Only) */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">All House Chores</h3>
+            {chores.filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId).length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 text-center">
+                <ClipboardCheck className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                <p className="text-stone-500 italic">No chores in your house yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {chores
+                  .filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId)
+                  .map(chore => {
+                    const isMyChore = chore.assignedTo.includes(currentUser.id);
+                    return (
+                      <div key={chore.id} className={`bg-white p-4 rounded-2xl border ${isMyChore ? 'border-primary/30 bg-primary/5' : 'border-stone-200'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMyChore ? 'bg-primary/20 text-primary' : 'bg-stone-100 text-stone-400'}`}>
+                            <ClipboardCheck className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-bold text-sm text-stone-800">{chore.title}</h5>
+                            <p className="text-xs text-stone-500 mt-1">
+                              {chore.assignedTo.length} {chore.assignedTo.length === 1 ? 'person' : 'people'} assigned
+                              {isMyChore && <span className="text-primary font-bold"> • You're assigned!</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
           <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">Recent Activity</h3>
@@ -2936,8 +3141,9 @@ export default function App() {
       )}
 
       {view === 'CLIENT_PORTAL' && currentUser && (
-        <ClientPortal 
+        <ClientPortal
            currentUser={currentUser}
+           chores={chores}
            onNavigate={setView}
            onCheckIn={handleCheckIn}
            onUpdateClient={handleClientUpdate}
