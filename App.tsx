@@ -477,7 +477,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
           
           <Button onClick={() => onRequestLogin('ADMIN')} className="w-full justify-between group py-4" variant="primary">
             <span>House Manager Login</span>
-            <Activity className="w-5 h-5 text-primary-200 group-hover:text-white" />
+            <Activity className="w-5 h-5 text-white/60 group-hover:text-white" />
           </Button>
           
           <div className="relative my-8">
@@ -487,7 +487,7 @@ const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} color="white" strokeWidth={2} />
+            <User size={20} strokeWidth={2} />
           </Button>
         </div>
       </div>
