@@ -1,0 +1,14 @@
+<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#5D8C5A" rx="38.4"/>
+
+  <!-- Steps Icon (simplified) -->
+  <g fill="#F5F5DC">
+    <rect x="38.4" y="115.2" width="48" height="15.36" rx="3.84"/>
+    <rect x="67.2" y="86.4" width="48" height="15.36" rx="3.84"/>
+    <rect x="96" y="57.6" width="48" height="15.36" rx="3.84"/>
+  </g>
+
+  <!-- Text "SS" -->
+  <text x="96" y="144" font-family="Arial, sans-serif" font-size="57.6" font-weight="bold" fill="#F5F5DC" text-anchor="middle">SS</text>
+</svg>

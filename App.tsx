@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { House, Client, ViewState, AdminTab, IntakeForm, CheckInType, CheckInLog, DrugTestLog, DischargeRecord } from './types';
+import { House, Client, ViewState, AdminTab, IntakeForm, CheckInType, CheckInLog, DrugTestLog, DischargeRecord, Chore, ChoreCompletion } from './types';
 import { MOCK_HOUSES, MOCK_CLIENTS, ADMIN_PASSWORD } from './constants';
 import { generateDailyReport, analyzeIntakeRisk } from './services/geminiService';
 import {
@@ -11,8 +11,14 @@ import {
   setHouse,
   initializeHouses,
   isHousesCollectionEmpty,
-  addCheckInLog
+  addCheckInLog,
+  subscribeToChores,
+  createChore,
+  updateChore,
+  deleteChore,
+  addChoreCompletion
 } from './services/firestoreService';
+import { getRandomBackground, Background } from './backgrounds';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import {
@@ -449,15 +455,16 @@ const ClientCard: React.FC<{ client: Client; onClick: (c: Client) => void }> = (
  </Card>
 );
 
-const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewState) => void, onRequestLogin: (type: 'ADMIN' | 'RESIDENT') => void }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFCF8] p-4">
+const LandingPage = ({ onNavigate, onRequestLogin, background }: { onNavigate: (view: ViewState) => void, onRequestLogin: (type: 'ADMIN' | 'RESIDENT') => void, background: Background }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: background.gradient }}>
     <div className="max-w-md w-full space-y-8 text-center">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-stone-100">
+      <div className="bg-white/95 backdrop-blur-sm p-10 rounded-[2.5rem] shadow-2xl border border-white/50">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
             <Home className="w-10 h-10" />
         </div>
         <h1 className="text-4xl font-bold text-primary mb-3 tracking-tight">Sober Solutions</h1>
-        <p className="text-stone-500 mb-10 text-lg">Community. Recovery. Purpose.</p>
+        <p className="text-stone-500 mb-2 text-lg">Community. Recovery. Purpose.</p>
+        <p className="text-xs text-stone-400 italic mb-8">{background.theme}</p>
         
         <div className="space-y-4">
           <Button onClick={() => onNavigate('INTAKE')} className="w-full justify-between group py-4" variant="outline">
@@ -477,7 +484,7 @@ const LandingPage = ({ onNavigate, onRequestLogin }: { onNavigate: (view: ViewSt
 
           <Button onClick={() => onRequestLogin('RESIDENT')} className="w-full justify-between group py-4" variant="secondary">
             <span>Resident Login</span>
-            <User size={20} color="white" strokeWidth={2.5} absoluteStrokeWidth />
+            <User size={20} strokeWidth={2.5} absoluteStrokeWidth />
           </Button>
         </div>
       </div>
@@ -772,7 +779,7 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
                                     variant="primary"
                                     className="w-full sm:w-auto shrink-0"
                                 >
-                                    <Plus size={20} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-2" /> Add Medication
+                                    <Plus size={20} strokeWidth={2.5} absoluteStrokeWidth className="mr-2" /> Add Medication
                                 </Button>
                             )}
                         </div>
@@ -1161,7 +1168,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
                                       onUpdateClient(updatedClient);
                                    }}
                                 >
-                                   <Plus size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" /> Add Medication
+                                   <Plus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" /> Add Medication
                                 </Button>
                              )}
                           </div>
@@ -1385,7 +1392,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 
                             <div className="pt-6 border-t border-stone-100 flex justify-end">
                                 <Button variant="danger" onClick={handleDischargeSubmit}>
-                                  <DoorOpen size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
+                                  <DoorOpen size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                   Finalize Discharge
                                 </Button>
                             </div>
@@ -1490,12 +1497,14 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onDischarge
 const AdminDashboard = ({
   houses,
   clients,
+  chores,
   onNavigate,
   onUpdateHouses,
   onUpdateClient
 }: {
   houses: House[],
   clients: Client[],
+  chores: Chore[],
   onNavigate: (v: ViewState) => void,
   onUpdateHouses: (houses: House[]) => void,
   onUpdateClient: (client: Client) => Promise<void>
@@ -1506,11 +1515,24 @@ const AdminDashboard = ({
   const [editValue, setEditValue] = useState('');
   const [aiReport, setAiReport] = useState('');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  
+
   // Admission State
   const [admittingClient, setAdmittingClient] = useState<Client | null>(null);
   const [admissionHouseId, setAdmissionHouseId] = useState<string>('');
   const [selectionDetails, setSelectionDetails] = useState<{houseId: string, roomId: string, bedId: string} | null>(null);
+
+  // Chore State
+  const [showChoreForm, setShowChoreForm] = useState(false);
+  const [editingChore, setEditingChore] = useState<Chore | null>(null);
+  const [choreForm, setChoreForm] = useState({
+    title: '',
+    description: '',
+    assignedTo: [] as string[],
+    recurring: false,
+    recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly',
+    reminderTime: '18:00',
+    houseId: ''
+  });
 
   // New House Context Logic
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
@@ -1719,6 +1741,9 @@ const AdminDashboard = ({
           </button>
           <button onClick={() => setTab('CLIENTS')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'CLIENTS' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
             <Users className="w-5 h-5" /> Residents
+          </button>
+          <button onClick={() => setTab('CHORES')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'CHORES' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
+            <ClipboardCheck className="w-5 h-5" /> Chores
           </button>
           <button onClick={() => setTab('AI_REPORT')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'AI_REPORT' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
             <BrainCircuit className="w-5 h-5" /> AI Shift Report
@@ -1970,7 +1995,7 @@ const AdminDashboard = ({
                                  </div>
                                  <div className="flex gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
-                                      <UserPlus size={16} color="white" strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
+                                      <UserPlus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                       Admit to House
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => setViewingClient(client)}>Review</Button>
@@ -2054,6 +2079,338 @@ const AdminDashboard = ({
           </div>
         )}
 
+        {tab === 'CHORES' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center flex-wrap gap-4">
+              <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Chore Management</h2>
+              <Button onClick={() => {
+                setShowChoreForm(true);
+                setEditingChore(null);
+                setChoreForm({
+                  title: '',
+                  description: '',
+                  assignedTo: [],
+                  recurring: false,
+                  recurrenceType: 'weekly',
+                  reminderTime: '18:00',
+                  houseId: selectedHouseId === 'ALL' ? '' : selectedHouseId
+                });
+              }}>
+                <Plus className="w-4 h-4 mr-2" /> Create Chore
+              </Button>
+            </div>
+
+            {/* Chore List */}
+            <div className="grid gap-4">
+              {chores.length === 0 ? (
+                <Card>
+                  <div className="text-center py-12">
+                    <ClipboardCheck className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+                    <h3 className="font-bold text-lg text-stone-700 mb-2">No Chores Yet</h3>
+                    <p className="text-stone-500 mb-6">Create your first chore to get started</p>
+                    <Button onClick={() => setShowChoreForm(true)}>
+                      <Plus className="w-4 h-4 mr-2" /> Create First Chore
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                chores
+                  .filter(chore => selectedHouseId === 'ALL' || !chore.houseId || chore.houseId === selectedHouseId)
+                  .map(chore => {
+                    const assignedResidents = clients.filter(c => chore.assignedTo.includes(c.id));
+                    const isOverdue = chore.status === 'overdue';
+                    const isCompleted = chore.status === 'completed';
+
+                    return (
+                      <Card key={chore.id}>
+                        <div className="p-6">
+                          <div className="flex justify-between items-start gap-4 mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="font-bold text-xl text-stone-800">{chore.title}</h3>
+                                {isCompleted && (
+                                  <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
+                                    Completed
+                                  </span>
+                                )}
+                                {isOverdue && (
+                                  <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">
+                                    Overdue
+                                  </span>
+                                )}
+                                {chore.recurring && (
+                                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                    Recurring ({chore.recurrenceType})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-stone-600 mb-3">{chore.description}</p>
+
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <div className="flex items-center gap-2 text-stone-500">
+                                  <Users className="w-4 h-4" />
+                                  <span className="font-medium">Assigned:</span>
+                                  {assignedResidents.length > 0 ? (
+                                    <span>{assignedResidents.map(r => `${r.firstName} ${r.lastName}`).join(', ')}</span>
+                                  ) : (
+                                    <span className="italic">Unassigned</span>
+                                  )}
+                                </div>
+                                {chore.reminderTime && (
+                                  <div className="flex items-center gap-2 text-stone-500">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>Reminder: {chore.reminderTime}</span>
+                                  </div>
+                                )}
+                                {chore.houseId && (
+                                  <div className="flex items-center gap-2 text-stone-500">
+                                    <Home className="w-4 h-4" />
+                                    <span>{houses.find(h => h.id === chore.houseId)?.name || 'Unknown House'}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {chore.completions && chore.completions.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-stone-200">
+                                  <p className="text-xs font-bold text-stone-500 uppercase mb-2">Recent Completions</p>
+                                  <div className="space-y-2">
+                                    {chore.completions.slice(-3).reverse().map(completion => {
+                                      const completedBy = clients.find(c => c.id === completion.completedBy);
+                                      return (
+                                        <div key={completion.id} className="text-sm text-stone-600 flex items-center gap-2">
+                                          <CheckCircle className="w-4 h-4 text-green-500" />
+                                          <span>{completedBy ? `${completedBy.firstName} ${completedBy.lastName}` : 'Unknown'}</span>
+                                          <span className="text-stone-400">•</span>
+                                          <span className="text-stone-400">{new Date(completion.completedAt).toLocaleDateString()}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingChore(chore);
+                                  setChoreForm({
+                                    title: chore.title,
+                                    description: chore.description,
+                                    assignedTo: chore.assignedTo,
+                                    recurring: chore.recurring,
+                                    recurrenceType: chore.recurrenceType || 'weekly',
+                                    reminderTime: chore.reminderTime || '18:00',
+                                    houseId: chore.houseId || ''
+                                  });
+                                  setShowChoreForm(true);
+                                }}
+                                className="p-2 text-stone-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (confirm('Are you sure you want to delete this chore?')) {
+                                    try {
+                                      await deleteChore(chore.id);
+                                    } catch (error) {
+                                      console.error('Error deleting chore:', error);
+                                      alert('Error deleting chore. Please try again.');
+                                    }
+                                  }
+                                }}
+                                className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chore Creation/Edit Modal */}
+        {showChoreForm && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-stone-200 flex justify-between items-center sticky top-0 bg-white">
+                <h3 className="font-bold text-xl text-stone-800">
+                  {editingChore ? 'Edit Chore' : 'Create New Chore'}
+                </h3>
+                <button onClick={() => setShowChoreForm(false)} className="text-stone-400 hover:text-stone-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Chore Title *</label>
+                  <input
+                    type="text"
+                    className={INPUT_CLASS}
+                    value={choreForm.title}
+                    onChange={e => setChoreForm({...choreForm, title: e.target.value})}
+                    placeholder="e.g., Clean Kitchen, Mow Lawn"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Description *</label>
+                  <textarea
+                    rows={3}
+                    className={INPUT_CLASS}
+                    value={choreForm.description}
+                    onChange={e => setChoreForm({...choreForm, description: e.target.value})}
+                    placeholder="Provide detailed instructions for this chore..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Assign to Residents</label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border border-stone-200 rounded-xl p-4">
+                    {clients.filter(c => c.status === 'active').length === 0 ? (
+                      <p className="text-stone-400 italic text-sm">No active residents to assign</p>
+                    ) : (
+                      clients
+                        .filter(c => c.status === 'active')
+                        .filter(c => selectedHouseId === 'ALL' || c.assignedHouseId === selectedHouseId)
+                        .map(client => (
+                          <label key={client.id} className="flex items-center gap-3 p-2 hover:bg-stone-50 rounded-lg cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={choreForm.assignedTo.includes(client.id)}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setChoreForm({...choreForm, assignedTo: [...choreForm.assignedTo, client.id]});
+                                } else {
+                                  setChoreForm({...choreForm, assignedTo: choreForm.assignedTo.filter(id => id !== client.id)});
+                                }
+                              }}
+                              className="w-4 h-4 text-primary"
+                            />
+                            <span className="text-sm font-medium text-stone-700">
+                              {client.firstName} {client.lastName}
+                            </span>
+                            <span className="text-xs text-stone-400">
+                              ({houses.find(h => h.id === client.assignedHouseId)?.name})
+                            </span>
+                          </label>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={choreForm.recurring}
+                      onChange={e => setChoreForm({...choreForm, recurring: e.target.checked})}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <span className="text-sm font-bold text-stone-700">Recurring Chore</span>
+                  </label>
+                  <p className="text-xs text-stone-500 mt-1 ml-7">Chore will repeat until reassigned</p>
+                </div>
+
+                {choreForm.recurring && (
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Recurrence Type</label>
+                    <select
+                      className={INPUT_CLASS}
+                      value={choreForm.recurrenceType}
+                      onChange={e => setChoreForm({...choreForm, recurrenceType: e.target.value as 'daily' | 'weekly' | 'monthly'})}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Reminder Time</label>
+                  <input
+                    type="time"
+                    className={INPUT_CLASS}
+                    value={choreForm.reminderTime}
+                    onChange={e => setChoreForm({...choreForm, reminderTime: e.target.value})}
+                  />
+                  <p className="text-xs text-stone-500 mt-1">Residents will be notified at this time</p>
+                </div>
+
+                {selectedHouseId === 'ALL' && (
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Specific House (Optional)</label>
+                    <select
+                      className={INPUT_CLASS}
+                      value={choreForm.houseId}
+                      onChange={e => setChoreForm({...choreForm, houseId: e.target.value})}
+                    >
+                      <option value="">All Houses</option>
+                      {houses.map(house => (
+                        <option key={house.id} value={house.id}>{house.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-stone-200 flex justify-end gap-3 sticky bottom-0 bg-white">
+                <Button variant="outline" onClick={() => setShowChoreForm(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!choreForm.title || !choreForm.description) {
+                      alert('Please fill in all required fields');
+                      return;
+                    }
+
+                    try {
+                      const choreData: Chore = {
+                        id: editingChore?.id || `chore_${Date.now()}`,
+                        title: choreForm.title,
+                        description: choreForm.description,
+                        assignedTo: choreForm.assignedTo,
+                        createdBy: 'Admin',
+                        createdAt: editingChore?.createdAt || new Date().toISOString(),
+                        recurring: choreForm.recurring,
+                        recurrenceType: choreForm.recurring ? choreForm.recurrenceType : undefined,
+                        reminderTime: choreForm.reminderTime,
+                        completions: editingChore?.completions || [],
+                        status: 'pending',
+                        houseId: choreForm.houseId || undefined
+                      };
+
+                      if (editingChore) {
+                        await updateChore(editingChore.id, choreData);
+                      } else {
+                        await createChore(choreData);
+                      }
+
+                      setShowChoreForm(false);
+                      setEditingChore(null);
+                    } catch (error) {
+                      console.error('Error saving chore:', error);
+                      alert('Error saving chore. Please try again.');
+                    }
+                  }}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingChore ? 'Update Chore' : 'Create Chore'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === 'AI_REPORT' && (
           <div className="space-y-8 h-full flex flex-col">
             <div className="flex justify-between items-center">
@@ -2090,6 +2447,10 @@ const AdminDashboard = ({
                 <Users className="w-6 h-6" />
                 <span className="text-[10px] font-bold mt-1">Residents</span>
             </button>
+            <button onClick={() => setTab('CHORES')} className={`flex flex-col items-center p-2 rounded-xl transition-all w-16 ${tab === 'CHORES' ? 'text-primary bg-primary/10' : 'text-stone-400'}`}>
+                <ClipboardCheck className="w-6 h-6" />
+                <span className="text-[10px] font-bold mt-1">Chores</span>
+            </button>
             <button onClick={() => setTab('AI_REPORT')} className={`flex flex-col items-center p-2 rounded-xl transition-all w-16 ${tab === 'AI_REPORT' ? 'text-primary bg-primary/10' : 'text-stone-400'}`}>
                 <BrainCircuit className="w-6 h-6" />
                 <span className="text-[10px] font-bold mt-1">Report</span>
@@ -2100,25 +2461,32 @@ const AdminDashboard = ({
   );
 };
 
-const ClientPortal = ({ 
-  currentUser, 
-  onNavigate, 
+const ClientPortal = ({
+  currentUser,
+  chores,
+  onNavigate,
   onCheckIn,
-  onUpdateClient 
-}: { 
-  currentUser: Client, 
-  onNavigate: (v: ViewState) => void, 
+  onUpdateClient
+}: {
+  currentUser: Client,
+  chores: Chore[],
+  onNavigate: (v: ViewState) => void,
   onCheckIn: (log: CheckInLog) => void,
-  onUpdateClient: (c: Client) => void 
+  onUpdateClient: (c: Client) => void
 }) => {
   const [checkInModal, setCheckInModal] = useState<{ open: boolean, type: CheckInType | null }>({ open: false, type: null });
   const [checkInData, setCheckInData] = useState({ locationName: '', comment: '' });
   const [gpsLoading, setGpsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+
   // Password Change State
   const [isChangePassOpen, setIsChangePassOpen] = useState(false);
   const [newPass, setNewPass] = useState('');
+
+  // Chore Completion State
+  const [completingChore, setCompletingChore] = useState<Chore | null>(null);
+  const [choreCompletionNotes, setChoreCompletionNotes] = useState('');
+  const [chorePhoto, setChorePhoto] = useState<File | null>(null);
 
   const initiateCheckIn = (type: CheckInType) => {
     setCheckInData({ locationName: '', comment: '' });
@@ -2209,6 +2577,34 @@ const ClientPortal = ({
      alert("Password updated successfully.");
   };
 
+  const handleCompleteChore = async () => {
+    if (!completingChore) return;
+
+    try {
+      // Create completion record
+      const completion: ChoreCompletion = {
+        id: `completion_${Date.now()}`,
+        completedAt: new Date().toISOString(),
+        completedBy: currentUser.id,
+        notes: choreCompletionNotes || undefined,
+        photoUrl: undefined // Photo upload would be implemented with Firebase Storage
+      };
+
+      // Add completion to chore
+      await addChoreCompletion(completingChore.id, completion);
+
+      // Reset state
+      setCompletingChore(null);
+      setChoreCompletionNotes('');
+      setChorePhoto(null);
+
+      alert('Chore marked as complete!');
+    } catch (error) {
+      console.error('Error completing chore:', error);
+      alert('Error completing chore. Please try again.');
+    }
+  };
+
   return (
       <div className="min-h-screen bg-cream pb-20">
         {/* Change Password Modal */}
@@ -2234,6 +2630,63 @@ const ClientPortal = ({
                      </div>
                 </div>
             </div>
+        )}
+
+        {/* Chore Completion Modal */}
+        {completingChore && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+              <h3 className="text-xl font-bold text-stone-800 mb-6">Complete Chore</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-bold text-stone-700 mb-2">Chore</p>
+                  <p className="text-lg font-bold text-primary">{completingChore.title}</p>
+                  <p className="text-sm text-stone-600 mt-1">{completingChore.description}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Notes (Optional)</label>
+                  <textarea
+                    rows={3}
+                    className={INPUT_CLASS}
+                    placeholder="Add any notes about completing this chore..."
+                    value={choreCompletionNotes}
+                    onChange={e => setChoreCompletionNotes(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2">Photo Proof (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className={INPUT_CLASS}
+                    onChange={e => setChorePhoto(e.target.files?.[0] || null)}
+                  />
+                  <p className="text-xs text-stone-500 mt-1">Upload a photo showing the completed work</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCompletingChore(null);
+                      setChoreCompletionNotes('');
+                      setChorePhoto(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCompleteChore} className="flex-1">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Mark Complete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Check In Modal */}
@@ -2344,6 +2797,119 @@ const ClientPortal = ({
             </button>
           </div>
 
+          {/* My Chores Section */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">My Chores</h3>
+            {chores.filter(c => c.assignedTo.includes(currentUser.id)).length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 text-center">
+                <ClipboardCheck className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                <p className="text-stone-500 italic">No chores assigned yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {chores
+                  .filter(c => c.assignedTo.includes(currentUser.id))
+                  .map(chore => {
+                    const isCompleted = chore.status === 'completed';
+                    const isOverdue = chore.status === 'overdue';
+                    const lastCompletion = chore.completions && chore.completions.length > 0
+                      ? chore.completions[chore.completions.length - 1]
+                      : null;
+
+                    return (
+                      <div key={chore.id} className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200">
+                        <div className="flex justify-between items-start gap-4 mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-bold text-lg text-stone-800">{chore.title}</h4>
+                              {isCompleted && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
+                                  Complete
+                                </span>
+                              )}
+                              {isOverdue && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">
+                                  Overdue
+                                </span>
+                              )}
+                              {chore.recurring && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-stone-600 text-sm mb-3">{chore.description}</p>
+
+                            {chore.reminderTime && (
+                              <div className="flex items-center gap-2 text-xs text-stone-500 mb-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>Reminder at {chore.reminderTime}</span>
+                              </div>
+                            )}
+
+                            {lastCompletion && (
+                              <div className="flex items-center gap-2 text-xs text-stone-500">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>Last completed {new Date(lastCompletion.completedAt).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setCompletingChore(chore);
+                              setChoreCompletionNotes('');
+                              setChorePhoto(null);
+                            }}
+                            disabled={currentUser.status !== 'active'}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Mark Complete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          {/* All Chores Section (View Only) */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">All House Chores</h3>
+            {chores.filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId).length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 text-center">
+                <ClipboardCheck className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                <p className="text-stone-500 italic">No chores in your house yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {chores
+                  .filter(c => !c.houseId || c.houseId === currentUser.assignedHouseId)
+                  .map(chore => {
+                    const isMyChore = chore.assignedTo.includes(currentUser.id);
+                    return (
+                      <div key={chore.id} className={`bg-white p-4 rounded-2xl border ${isMyChore ? 'border-primary/30 bg-primary/5' : 'border-stone-200'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMyChore ? 'bg-primary/20 text-primary' : 'bg-stone-100 text-stone-400'}`}>
+                            <ClipboardCheck className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-bold text-sm text-stone-800">{chore.title}</h5>
+                            <p className="text-xs text-stone-500 mt-1">
+                              {chore.assignedTo.length} {chore.assignedTo.length === 1 ? 'person' : 'people'} assigned
+                              {isMyChore && <span className="text-primary font-bold"> • You're assigned!</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
           <h3 className="text-xl font-bold text-stone-800 mb-4 px-2">Recent Activity</h3>
           <div className="space-y-4">
             {currentUser.checkInLogs.length === 0 ? (
@@ -2374,15 +2940,18 @@ export default function App() {
   const [view, setView] = useState<ViewState>('LANDING');
   const [houses, setHouses] = useState<House[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [chores, setChores] = useState<Chore[]>([]);
   const [currentUser, setCurrentUser] = useState<Client | null>(null);
   const [authModal, setAuthModal] = useState<{ open: boolean, type: 'ADMIN' | 'RESIDENT' }>({ open: false, type: 'ADMIN' });
   const [isInitializing, setIsInitializing] = useState(true);
+  const [background, setBackground] = useState<Background>(getRandomBackground());
 
   // --- Firebase Initialization & Real-time Listeners ---
 
   useEffect(() => {
     let unsubscribeHouses: (() => void) | undefined;
     let unsubscribeClients: (() => void) | undefined;
+    let unsubscribeChores: (() => void) | undefined;
 
     const initializeFirebase = async () => {
       try {
@@ -2411,6 +2980,10 @@ export default function App() {
           });
         });
 
+        unsubscribeChores = subscribeToChores((choresData) => {
+          setChores(choresData);
+        });
+
         setIsInitializing(false);
       } catch (error) {
         console.error('Error initializing Firebase:', error);
@@ -2427,6 +3000,7 @@ export default function App() {
     return () => {
       if (unsubscribeHouses) unsubscribeHouses();
       if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribeChores) unsubscribeChores();
     };
   }, []);
 
@@ -2512,6 +3086,8 @@ export default function App() {
 
   const handleLoginSuccess = (user?: Client) => {
     setAuthModal({ open: false, type: 'ADMIN' });
+    // Change background on each login for variety and inspiration
+    setBackground(getRandomBackground());
     if (user) {
       setCurrentUser(user);
       setView('CLIENT_PORTAL');
@@ -2538,9 +3114,10 @@ export default function App() {
       />
 
       {view === 'LANDING' && (
-        <LandingPage 
-          onNavigate={setView} 
+        <LandingPage
+          onNavigate={setView}
           onRequestLogin={(type) => setAuthModal({ open: true, type })}
+          background={background}
         />
       )}
 
@@ -2556,6 +3133,7 @@ export default function App() {
         <AdminDashboard
            houses={houses}
            clients={clients}
+           chores={chores}
            onNavigate={setView}
            onUpdateHouses={handleUpdateHouses}
            onUpdateClient={handleClientUpdate}
@@ -2563,8 +3141,9 @@ export default function App() {
       )}
 
       {view === 'CLIENT_PORTAL' && currentUser && (
-        <ClientPortal 
+        <ClientPortal
            currentUser={currentUser}
+           chores={chores}
            onNavigate={setView}
            onCheckIn={handleCheckIn}
            onUpdateClient={handleClientUpdate}
