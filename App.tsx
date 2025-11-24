@@ -1279,7 +1279,7 @@ End of Resident File
           </div>
 
           {/* Navigation */}
-          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto" style={{scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch'}}>
+          <div className="flex border-b border-stone-200 bg-white px-2 md:px-4 overflow-x-auto min-h-[56px]" style={{scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch'}}>
               <button onClick={() => setTab('INFO')} className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold border-b-4 transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0 ${tab === 'INFO' ? 'border-primary text-primary' : 'border-transparent text-stone-400 hover:text-stone-600'}`}>
                  <FileText className="w-4 h-4"/> Info
               </button>
