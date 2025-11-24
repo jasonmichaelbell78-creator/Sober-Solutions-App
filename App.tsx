@@ -1227,7 +1227,7 @@ End of Resident File
   return (
     <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          
+
           {/* Header */}
           <div className="bg-stone-50 p-8 border-b border-stone-200 flex justify-between items-start">
              <div className="flex-1">
@@ -2194,7 +2194,7 @@ const AdminDashboard = ({
                 houses={houses}
                 onClose={() => setViewingClient(null)}
                 onUpdateClient={handleUpdateClient}
-                onUpdateHouses={handleUpdateHouses}
+                onUpdateHouses={onUpdateHouses}
                 onDischarge={handleDischargeClient}
              />
         )}
