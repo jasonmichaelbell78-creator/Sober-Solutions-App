@@ -954,13 +954,14 @@ const IntakeFormView = ({ readOnly = false, initialData = null, houses, onSubmit
   );
 };
 
-const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHouses, onDischarge }: {
+const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHouses, onDischarge, toast }: {
   client: Client,
   houses: House[],
   onClose: () => void,
   onUpdateClient: (c: Client) => void,
   onUpdateHouses: (houses: House[]) => Promise<void>,
-  onDischarge: (c: Client, record: DischargeRecord) => void
+  onDischarge: (c: Client, record: DischargeRecord) => void,
+  toast: ReturnType<typeof useToast>
 }) => {
   const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'NOTES' | 'DISCHARGE'>('INFO');
   const [newUa, setNewUa] = useState<Partial<DrugTestLog>>({ type: 'Instant', result: 'Negative', notes: '' });
@@ -980,6 +981,8 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
   const [editingName, setEditingName] = useState(false);
   const [editedFirstName, setEditedFirstName] = useState(client.firstName);
   const [editedLastName, setEditedLastName] = useState(client.lastName);
+  const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
+  const [showRemoveBedConfirm, setShowRemoveBedConfirm] = useState(false);
 
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
@@ -1001,16 +1004,18 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
 
   const handleDischargeSubmit = () => {
     if (!dischargeForm.date || !dischargeForm.type) return;
+    setShowDischargeConfirm(true);
+  };
+
+  const handleDischargeConfirm = () => {
     const record = dischargeForm as DischargeRecord;
-    
-    if (window.confirm("Are you sure you want to discharge this resident? This will remove them from their bed.")) {
-       onDischarge(client, record);
-    }
+    onDischarge(client, record);
+    setShowDischargeConfirm(false);
   };
 
   const handlePasswordReset = () => {
     if (resetPassword.length < 6) {
-      alert("Password must be at least 6 characters");
+      toast.warning("Password must be at least 6 characters");
       return;
     }
     const updatedClient = {
@@ -1020,12 +1025,12 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
     onUpdateClient(updatedClient);
     setResetPassword('');
     setShowReset(false);
-    alert("Password updated successfully.");
+    toast.success("Password updated successfully.");
   };
 
   const handleTransferBed = async () => {
     if (!transferBedId) {
-      alert("Please select a bed");
+      toast.warning("Please select a bed");
       return;
     }
 
@@ -1074,19 +1079,45 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
       // 4. Close modal and show success
       setShowTransfer(false);
       setTransferBedId('');
-      alert(`✅ ${client.firstName} successfully ${client.assignedBedId ? 'transferred to' : 'assigned to'} new bed!`);
+      toast.success(`${client.firstName} successfully ${client.assignedBedId ? 'transferred to' : 'assigned to'} new bed!`);
 
       // 5. Close the client detail modal to force refresh
       onClose();
     } catch (error) {
       console.error('Error transferring bed:', error);
-      alert('Error transferring bed. Please try again.');
+      toast.error('Error transferring bed. Please try again.');
+    }
+  };
+
+  const handleRemoveBed = async () => {
+    try {
+      // Clear bed assignment
+      const updatedHouses = houses.map(h => ({
+        ...h,
+        rooms: h.rooms.map(r => ({
+          ...r,
+          beds: r.beds.map(b =>
+            b.occupantId === client.id ? { ...b, occupantId: null } : b
+          )
+        }))
+      }));
+      const updatedClient = { ...client, assignedBedId: null, assignedHouseId: null };
+      await onUpdateHouses(updatedHouses);
+      await onUpdateClient(updatedClient);
+      setShowTransfer(false);
+      setShowRemoveBedConfirm(false);
+      toast.success('Resident removed from bed successfully');
+      onClose(); // Close detail modal to force refresh
+    } catch (error) {
+      console.error('Error removing from bed:', error);
+      toast.error('Error removing from bed. Please try again.');
+      setShowRemoveBedConfirm(false);
     }
   };
 
   const handleAddNote = () => {
     if (!newNote.content || newNote.content.trim() === '') {
-      alert('Please enter note content');
+      toast.warning('Please enter note content');
       return;
     }
     const note: Note = {
@@ -1102,11 +1133,12 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
     };
     onUpdateClient(updatedClient);
     setNewNote({ content: '', category: 'General' });
+    toast.success('Note added successfully');
   };
 
   const handleSaveName = () => {
     if (!editedFirstName.trim() || !editedLastName.trim()) {
-      alert('Both first and last name are required');
+      toast.warning('Both first and last name are required');
       return;
     }
     const updatedClient = {
@@ -1789,30 +1821,7 @@ End of Resident File
                       {client.assignedBedId && (
                         <Button
                           variant="secondary"
-                          onClick={async () => {
-                            if (!confirm(`Remove ${client.firstName} ${client.lastName} from their current bed?`)) return;
-                            try {
-                              // Clear bed assignment
-                              const updatedHouses = houses.map(h => ({
-                                ...h,
-                                rooms: h.rooms.map(r => ({
-                                  ...r,
-                                  beds: r.beds.map(b =>
-                                    b.occupantId === client.id ? { ...b, occupantId: null } : b
-                                  )
-                                }))
-                              }));
-                              const updatedClient = { ...client, assignedBedId: null, assignedHouseId: null };
-                              await onUpdateHouses(updatedHouses);
-                              await onUpdateClient(updatedClient);
-                              setShowTransfer(false);
-                              alert('✅ Resident removed from bed successfully');
-                              onClose(); // Close detail modal to force refresh
-                            } catch (error) {
-                              console.error('Error removing from bed:', error);
-                              alert('Error removing from bed. Please try again.');
-                            }
-                          }}
+                          onClick={() => setShowRemoveBedConfirm(true)}
                           className="flex-1"
                         >
                           Remove from Bed
@@ -1832,6 +1841,29 @@ End of Resident File
              </div>
           </div>
        )}
+
+       {/* Confirmation Dialogs */}
+       <ConfirmDialog
+         isOpen={showDischargeConfirm}
+         title="Discharge Resident"
+         message="Are you sure you want to discharge this resident? This will remove them from their bed."
+         confirmText="Discharge"
+         cancelText="Cancel"
+         onConfirm={handleDischargeConfirm}
+         onCancel={() => setShowDischargeConfirm(false)}
+         variant="danger"
+       />
+
+       <ConfirmDialog
+         isOpen={showRemoveBedConfirm}
+         title="Remove from Bed"
+         message={`Remove ${client.firstName} ${client.lastName} from their current bed?`}
+         confirmText="Remove"
+         cancelText="Cancel"
+         onConfirm={handleRemoveBed}
+         onCancel={() => setShowRemoveBedConfirm(false)}
+         variant="warning"
+       />
     </div>
   );
 };
@@ -1877,6 +1909,7 @@ const AdminDashboard = ({
     reminderTime: '18:00',
     houseId: ''
   });
+  const [deleteChoreId, setDeleteChoreId] = useState<string | null>(null);
 
   // Settings State
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -1996,14 +2029,14 @@ const AdminDashboard = ({
       await onUpdateClient(updatedClient);
 
       // 5. Show success message
-      alert(`✅ ${admittingClient.firstName} ${admittingClient.lastName} has been successfully admitted and assigned to the bed!`);
+      toast.success(`${admittingClient.firstName} ${admittingClient.lastName} has been successfully admitted and assigned to the bed!`);
 
       // 6. Close modal only after successful save
       setAdmittingClient(null);
       setSelectionDetails(null);
     } catch (error) {
       console.error('Error admitting resident:', error);
-      alert('Error admitting resident. Please try again.');
+      toast.error('Error admitting resident. Please try again.');
     }
   };
 
@@ -2046,10 +2079,25 @@ const AdminDashboard = ({
       };
 
       await updateClient(client.id, updatedClient);
+      toast.success(`${client.firstName} ${client.lastName} has been discharged successfully.`);
       setViewingClient(null); // Close modal
     } catch (error) {
       console.error('Error discharging client:', error);
-      alert('Error discharging resident. Please try again.');
+      toast.error('Error discharging resident. Please try again.');
+    }
+  };
+
+  const handleDeleteChore = async () => {
+    if (!deleteChoreId) return;
+
+    try {
+      await deleteChore(deleteChoreId);
+      toast.success('Chore deleted successfully');
+      setDeleteChoreId(null);
+    } catch (error) {
+      console.error('Error deleting chore:', error);
+      toast.error('Error deleting chore. Please try again.');
+      setDeleteChoreId(null);
     }
   };
 
@@ -2201,6 +2249,7 @@ const AdminDashboard = ({
                 onUpdateClient={handleUpdateClient}
                 onUpdateHouses={onUpdateHouses}
                 onDischarge={handleDischargeClient}
+                toast={toast}
              />
         )}
 
@@ -2565,16 +2614,7 @@ const AdminDashboard = ({
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={async () => {
-                                  if (confirm('Are you sure you want to delete this chore?')) {
-                                    try {
-                                      await deleteChore(chore.id);
-                                    } catch (error) {
-                                      console.error('Error deleting chore:', error);
-                                      alert('Error deleting chore. Please try again.');
-                                    }
-                                  }
-                                }}
+                                onClick={() => setDeleteChoreId(chore.id)}
                                 className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2728,7 +2768,7 @@ const AdminDashboard = ({
                 <Button
                   onClick={async () => {
                     if (!choreForm.title || !choreForm.description) {
-                      alert('Please fill in all required fields');
+                      toast.warning('Please fill in all required fields');
                       return;
                     }
 
@@ -2754,11 +2794,12 @@ const AdminDashboard = ({
                         await createChore(choreData);
                       }
 
+                      toast.success(`Chore ${editingChore ? 'updated' : 'created'} successfully`);
                       setShowChoreForm(false);
                       setEditingChore(null);
                     } catch (error) {
                       console.error('Error saving chore:', error);
-                      alert('Error saving chore. Please try again.');
+                      toast.error('Error saving chore. Please try again.');
                     }
                   }}
                 >
@@ -2827,22 +2868,22 @@ const AdminDashboard = ({
                 </div>
                 <Button onClick={async () => {
                   if (newAdminPassword.length < 6) {
-                    alert('Password must be at least 6 characters');
+                    toast.warning('Password must be at least 6 characters');
                     return;
                   }
                   if (newAdminPassword !== confirmPassword) {
-                    alert('Passwords do not match');
+                    toast.warning('Passwords do not match');
                     return;
                   }
                   try {
                     // Store new password in Firebase (syncs across all devices)
                     await updateSettings({ adminPassword: newAdminPassword });
-                    alert('Admin password updated successfully! This will now sync across all devices.');
+                    toast.success('Admin password updated successfully! This will now sync across all devices.');
                     setNewAdminPassword('');
                     setConfirmPassword('');
                   } catch (error) {
                     console.error('Error updating password:', error);
-                    alert('Error updating password. Please try again.');
+                    toast.error('Error updating password. Please try again.');
                   }
                 }}>
                   <Key className="w-4 h-4 mr-2" /> Update Password
@@ -2873,6 +2914,18 @@ const AdminDashboard = ({
             </button>
         </div>
       </main>
+
+      {/* Confirmation Dialog for Chore Deletion */}
+      <ConfirmDialog
+        isOpen={deleteChoreId !== null}
+        title="Delete Chore"
+        message="Are you sure you want to delete this chore? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteChore}
+        onCancel={() => setDeleteChoreId(null)}
+        variant="danger"
+      />
     </div>
   );
 };
@@ -3009,13 +3062,13 @@ const ClientPortal = ({
 
   const handleChangePassword = () => {
      if(newPass.length < 6) {
-         alert("Password must be at least 6 characters long.");
+         toast.warning("Password must be at least 6 characters long.");
          return;
      }
      onUpdateClient({ ...currentUser, password: newPass });
      setNewPass('');
      setIsChangePassOpen(false);
-     alert("Password updated successfully.");
+     toast.success("Password updated successfully.");
   };
 
   const handleCompleteChore = async () => {
@@ -3039,10 +3092,10 @@ const ClientPortal = ({
       setChoreCompletionNotes('');
       setChorePhoto(null);
 
-      alert('Chore marked as complete!');
+      toast.success('Chore marked as complete!');
     } catch (error) {
       console.error('Error completing chore:', error);
-      alert('Error completing chore. Please try again.');
+      toast.error('Error completing chore. Please try again.');
     }
   };
 
@@ -3570,7 +3623,7 @@ export default function App() {
       await setClient(updatedClient);
     } catch (error) {
       console.error('Error updating client:', error);
-      alert("Error updating resident. Please try again.");
+      toast.error("Error updating resident. Please try again.");
     }
   };
 
