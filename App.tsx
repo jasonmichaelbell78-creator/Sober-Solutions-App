@@ -26,6 +26,9 @@ import {
 import { getRandomBackground, Background } from './backgrounds';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
+import { useToast, ToastContainer } from './components/Toast';
+import { Loading, LoadingOverlay } from './components/Loading';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import {
   Home,
   UserPlus,
@@ -3382,6 +3385,9 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [background, setBackground] = useState<Background>(getRandomBackground());
 
+  // Toast notification system
+  const toast = useToast();
+
   // --- Firebase Initialization & Real-time Listeners ---
 
   useEffect(() => {
@@ -3630,6 +3636,9 @@ export default function App() {
            onUpdateClient={handleClientUpdate}
         />
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onClose={toast.closeToast} />
     </div>
   );
 }
