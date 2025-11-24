@@ -959,7 +959,6 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
   onUpdateHouses: (houses: House[]) => Promise<void>,
   onDischarge: (c: Client, record: DischargeRecord) => void
 }) => {
-  console.log('ClientDetailView rendering for client:', client.firstName, client.lastName);
   const [tab, setTab] = useState<'INFO' | 'MEDS' | 'UA' | 'LOGS' | 'NOTES' | 'DISCHARGE'>('INFO');
   const [newUa, setNewUa] = useState<Partial<DrugTestLog>>({ type: 'Instant', result: 'Negative', notes: '' });
   const [dischargeForm, setDischargeForm] = useState<Partial<DischargeRecord>>({
@@ -1228,8 +1227,6 @@ End of Resident File
   return (
     <div className="fixed inset-0 z-50 bg-[#3c4a3e]/60 flex items-center justify-center p-4 backdrop-blur-sm">
        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          {/* DEBUG: Visible test */}
-          <div className="bg-red-500 text-white p-2 text-center font-bold">MODAL IS RENDERING - {client.firstName} {client.lastName}</div>
 
           {/* Header */}
           <div className="bg-stone-50 p-8 border-b border-stone-200 flex justify-between items-start">
@@ -2197,7 +2194,7 @@ const AdminDashboard = ({
                 houses={houses}
                 onClose={() => setViewingClient(null)}
                 onUpdateClient={handleUpdateClient}
-                onUpdateHouses={handleUpdateHouses}
+                onUpdateHouses={onUpdateHouses}
                 onDischarge={handleDischargeClient}
              />
         )}
