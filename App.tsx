@@ -61,7 +61,8 @@ import {
   User,
   Eye,
   FileCheck,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 
 // --- Constants ---
@@ -983,6 +984,8 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
   const [editedLastName, setEditedLastName] = useState(client.lastName);
   const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
   const [showRemoveBedConfirm, setShowRemoveBedConfirm] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
@@ -1034,6 +1037,7 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
       return;
     }
 
+    setIsTransferring(true);
     try {
       // 1. Update ALL houses in one operation: clear old bed everywhere and assign new bed
       const updatedHouses = houses.map(h => {
@@ -1086,10 +1090,13 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
     } catch (error) {
       console.error('Error transferring bed:', error);
       toast.error('Error transferring bed. Please try again.');
+    } finally {
+      setIsTransferring(false);
     }
   };
 
   const handleRemoveBed = async () => {
+    setIsRemoving(true);
     try {
       // Clear bed assignment
       const updatedHouses = houses.map(h => ({
@@ -1112,6 +1119,8 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
       console.error('Error removing from bed:', error);
       toast.error('Error removing from bed. Please try again.');
       setShowRemoveBedConfirm(false);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -1822,19 +1831,36 @@ End of Resident File
                         <Button
                           variant="secondary"
                           onClick={() => setShowRemoveBedConfirm(true)}
+                          disabled={isRemoving || isTransferring}
                           className="flex-1"
                         >
-                          Remove from Bed
+                          {isRemoving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                              Removing...
+                            </>
+                          ) : (
+                            'Remove from Bed'
+                          )}
                         </Button>
                       )}
                       <Button
                          variant="primary"
                          onClick={handleTransferBed}
-                         disabled={!transferBedId || (transferBedId === client.assignedBedId && transferHouseId === client.assignedHouseId)}
+                         disabled={isTransferring || isRemoving || !transferBedId || (transferBedId === client.assignedBedId && transferHouseId === client.assignedHouseId)}
                          className="flex-1"
                       >
-                         <BedDouble className="w-4 h-4 mr-1" />
-                         Confirm {client.assignedBedId ? 'Transfer' : 'Assignment'}
+                         {isTransferring ? (
+                           <>
+                             <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                             {client.assignedBedId ? 'Transferring...' : 'Assigning...'}
+                           </>
+                         ) : (
+                           <>
+                             <BedDouble className="w-4 h-4 mr-1" />
+                             Confirm {client.assignedBedId ? 'Transfer' : 'Assignment'}
+                           </>
+                         )}
                       </Button>
                    </div>
                 </div>
@@ -1911,6 +1937,12 @@ const AdminDashboard = ({
   });
   const [deleteChoreId, setDeleteChoreId] = useState<string | null>(null);
 
+  // Loading States
+  const [isAdmitting, setIsAdmitting] = useState(false);
+  const [isDischarging, setIsDischarging] = useState(false);
+  const [isSavingChore, setIsSavingChore] = useState(false);
+  const [isDeletingChore, setIsDeletingChore] = useState(false);
+
   // Settings State
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1982,6 +2014,7 @@ const AdminDashboard = ({
   const handleConfirmAdmission = async () => {
     if (!admittingClient || !selectionDetails) return;
 
+    setIsAdmitting(true);
     try {
       // 1. Clear any existing bed assignment for this resident (prevent duplication)
       let housesAfterClear = houses.map(h => ({
@@ -2037,6 +2070,8 @@ const AdminDashboard = ({
     } catch (error) {
       console.error('Error admitting resident:', error);
       toast.error('Error admitting resident. Please try again.');
+    } finally {
+      setIsAdmitting(false);
     }
   };
 
@@ -2046,6 +2081,7 @@ const AdminDashboard = ({
   };
 
   const handleDischargeClient = async (client: Client, record: DischargeRecord) => {
+    setIsDischarging(true);
     try {
       // 1. Remove resident from ALL beds across ALL houses (fixes duplication bug)
       const updatedHouses = houses.map(h => ({
@@ -2084,12 +2120,15 @@ const AdminDashboard = ({
     } catch (error) {
       console.error('Error discharging client:', error);
       toast.error('Error discharging resident. Please try again.');
+    } finally {
+      setIsDischarging(false);
     }
   };
 
   const handleDeleteChore = async () => {
     if (!deleteChoreId) return;
 
+    setIsDeletingChore(true);
     try {
       await deleteChore(deleteChoreId);
       toast.success('Chore deleted successfully');
@@ -2098,6 +2137,8 @@ const AdminDashboard = ({
       console.error('Error deleting chore:', error);
       toast.error('Error deleting chore. Please try again.');
       setDeleteChoreId(null);
+    } finally {
+      setIsDeletingChore(false);
     }
   };
 
@@ -2232,8 +2273,17 @@ const AdminDashboard = ({
                         </div>
 
                         <div className="mt-8 flex justify-end gap-4">
-                            <Button variant="outline" onClick={() => setAdmittingClient(null)}>Cancel</Button>
-                            <Button onClick={handleConfirmAdmission} disabled={!selectionDetails}>Confirm Admission</Button>
+                            <Button variant="outline" onClick={() => setAdmittingClient(null)} disabled={isAdmitting}>Cancel</Button>
+                            <Button onClick={handleConfirmAdmission} disabled={isAdmitting || !selectionDetails}>
+                              {isAdmitting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Admitting...
+                                </>
+                              ) : (
+                                'Confirm Admission'
+                              )}
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -2772,6 +2822,7 @@ const AdminDashboard = ({
                       return;
                     }
 
+                    setIsSavingChore(true);
                     try {
                       const choreData: Chore = {
                         id: editingChore?.id || `chore_${Date.now()}`,
@@ -2800,11 +2851,23 @@ const AdminDashboard = ({
                     } catch (error) {
                       console.error('Error saving chore:', error);
                       toast.error('Error saving chore. Please try again.');
+                    } finally {
+                      setIsSavingChore(false);
                     }
                   }}
+                  disabled={isSavingChore}
                 >
-                  <Save size={16} color="white" />
-                  {editingChore ? 'Update Chore' : 'Create Chore'}
+                  {isSavingChore ? (
+                    <>
+                      <Loader2 size={16} color="white" className="animate-spin" />
+                      {editingChore ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} color="white" />
+                      {editingChore ? 'Update Chore' : 'Create Chore'}
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
