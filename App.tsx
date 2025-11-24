@@ -1842,14 +1842,16 @@ const AdminDashboard = ({
   chores,
   onNavigate,
   onUpdateHouses,
-  onUpdateClient
+  onUpdateClient,
+  toast
 }: {
   houses: House[],
   clients: Client[],
   chores: Chore[],
   onNavigate: (v: ViewState) => void,
   onUpdateHouses: (houses: House[]) => Promise<void>,
-  onUpdateClient: (client: Client) => Promise<void>
+  onUpdateClient: (client: Client) => Promise<void>,
+  toast: ReturnType<typeof useToast>
 }) => {
   const [tab, setTab] = useState<AdminTab>('HOUSES');
   const [viewingClient, setViewingClient] = useState<Client | null>(null); // Updated to generic viewing client
@@ -3524,11 +3526,11 @@ export default function App() {
 
       // Save to Firebase - real-time listener will update local state
       await createClient(newClient);
-      alert("Application submitted successfully! An admin will review your application.");
+      toast.success("Application submitted successfully! An admin will review your application.");
       setView('LANDING');
     } catch (error) {
       console.error('Error submitting application:', error);
-      alert("Error submitting application. Please try again.");
+      toast.error("Error submitting application. Please try again.");
     }
   };
 
@@ -3555,9 +3557,10 @@ export default function App() {
 
       // Save to Firebase - real-time listener will update local state
       await setClient(updatedClient);
+      toast.success("Check-in recorded successfully!");
     } catch (error) {
       console.error('Error recording check-in:', error);
-      alert("Error recording check-in. Please try again.");
+      toast.error("Error recording check-in. Please try again.");
     }
   };
 
@@ -3624,6 +3627,7 @@ export default function App() {
            onNavigate={setView}
            onUpdateHouses={handleUpdateHouses}
            onUpdateClient={handleClientUpdate}
+           toast={toast}
         />
       )}
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sobersteps-v8';
+const CACHE_NAME = 'sobersteps-v9';
 const urlsToCache = [
   '/',
   '/index.html',
