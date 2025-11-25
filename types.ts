@@ -134,6 +134,7 @@ export interface Client extends IntakeForm {
   notes?: Note[];
   dischargeRecord?: DischargeRecord;
   password?: string;
+  profilePhotoUrl?: string; // Base64 data URL or external URL
 }
 
 export interface Note {

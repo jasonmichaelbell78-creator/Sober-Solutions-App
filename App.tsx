@@ -999,6 +999,12 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
   const [isTransferring, setIsTransferring] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
 
+  // Camera/Photo State
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
   const handleAddUA = () => {
     if (!newUa.type || !newUa.result) return;
     const log: DrugTestLog = {
@@ -1195,6 +1201,70 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
     setEditingName(false);
   };
 
+  // Camera Functions
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 }
+      });
+      setStream(mediaStream);
+      setShowCamera(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (error) {
+      toast.error('Unable to access camera. Please check permissions.');
+      console.error('Camera error:', error);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const updatedClient = {
+          ...client,
+          profilePhotoUrl: photoDataUrl
+        };
+        onUpdateClient(updatedClient);
+        stopCamera();
+        toast.success('Profile photo captured!');
+      }
+    }
+  };
+
+  const removePhoto = () => {
+    const updatedClient = {
+      ...client,
+      profilePhotoUrl: undefined
+    };
+    onUpdateClient(updatedClient);
+    toast.success('Profile photo removed');
+  };
+
+  // Cleanup camera on unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
   const handleDownloadFile = () => {
     const house = houses.find(h => h.id === client.assignedHouseId);
     const fileContent = `
@@ -1387,6 +1457,80 @@ End of Resident File
               
               {tab === 'INFO' && (
                  <>
+                   {/* Profile Photo Section */}
+                   <div className="max-w-3xl mx-auto mb-8">
+                     <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+                       <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                         <User className="w-5 h-5 text-stone-400"/> Profile Photo
+                       </h3>
+                       <div className="flex flex-col md:flex-row gap-6 items-center">
+                         {/* Photo Display */}
+                         <div className="flex-shrink-0">
+                           {client.profilePhotoUrl ? (
+                             <div className="relative">
+                               <img
+                                 src={client.profilePhotoUrl}
+                                 alt={`${client.firstName} ${client.lastName}`}
+                                 className="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg"
+                               />
+                               <button
+                                 onClick={removePhoto}
+                                 className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                                 title="Remove photo"
+                               >
+                                 <X className="w-4 h-4" />
+                               </button>
+                             </div>
+                           ) : (
+                             <div className="w-32 h-32 rounded-full bg-stone-100 border-4 border-stone-200 flex items-center justify-center">
+                               <User className="w-16 h-16 text-stone-300" />
+                             </div>
+                           )}
+                         </div>
+
+                         {/* Camera Controls */}
+                         <div className="flex-1">
+                           {!showCamera ? (
+                             <div className="space-y-3">
+                               <p className="text-sm text-stone-600">
+                                 {client.profilePhotoUrl
+                                   ? 'Profile photo set. You can retake or remove it.'
+                                   : 'No profile photo. Capture one using your device camera.'}
+                               </p>
+                               <Button onClick={startCamera} size="sm">
+                                 <User className="w-4 h-4 mr-2" />
+                                 {client.profilePhotoUrl ? 'Retake Photo' : 'Capture Photo'}
+                               </Button>
+                             </div>
+                           ) : (
+                             <div className="space-y-4">
+                               <div className="relative bg-black rounded-xl overflow-hidden">
+                                 <video
+                                   ref={videoRef}
+                                   autoPlay
+                                   playsInline
+                                   className="w-full max-w-md rounded-xl"
+                                 />
+                               </div>
+                               <div className="flex gap-2">
+                                 <Button onClick={capturePhoto} size="sm">
+                                   <CheckCircle className="w-4 h-4 mr-2" />
+                                   Capture
+                                 </Button>
+                                 <Button onClick={stopCamera} variant="outline" size="sm">
+                                   <X className="w-4 h-4 mr-2" />
+                                   Cancel
+                                 </Button>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                       {/* Hidden canvas for photo capture */}
+                       <canvas ref={canvasRef} style={{ display: 'none' }} />
+                     </div>
+                   </div>
+
                    <IntakeFormView readOnly={true} initialData={client} houses={houses} />
 
                    {/* Bed Assignment Section */}
