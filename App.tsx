@@ -1987,18 +1987,32 @@ const AdminDashboard = ({
       };
 
       // 4. Save to Firebase (await both operations)
-      await onUpdateHouses(updatedHouses);
-      await onUpdateClient(updatedClient);
+      try {
+        await onUpdateHouses(updatedHouses);
+      } catch (houseError) {
+        console.error('Error updating houses:', houseError);
+        throw new Error('Failed to update house assignments');
+      }
 
-      // 5. Show success message
+      try {
+        await onUpdateClient(updatedClient);
+      } catch (clientError) {
+        console.error('Error updating client:', clientError);
+        throw new Error('Failed to update resident status');
+      }
+
+      // 5. Wait a moment for Firebase to propagate changes
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 6. Show success message
       alert(`✅ ${admittingClient.firstName} ${admittingClient.lastName} has been successfully admitted and assigned to the bed!`);
 
-      // 6. Close modal only after successful save
+      // 7. Close modal only after successful save and wait
       setAdmittingClient(null);
       setSelectionDetails(null);
     } catch (error) {
       console.error('Error admitting resident:', error);
-      alert('Error admitting resident. Please try again.');
+      alert(`Error: ${error instanceof Error ? error.message : 'Error admitting resident. Please try again.'}`);
     }
   };
 
@@ -2312,7 +2326,7 @@ const AdminDashboard = ({
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
-                                 <div className="flex gap-3">
+                                 <div className="flex flex-wrap gap-2 sm:gap-3">
                                     <Button size="sm" variant="primary" onClick={() => {
                                       const updatedClient = { ...client, status: 'active' as const };
                                       onUpdateClient(updatedClient);
@@ -2343,7 +2357,7 @@ const AdminDashboard = ({
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
-                                 <div className="flex gap-3">
+                                 <div className="flex flex-wrap gap-2 sm:gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
                                       <UserPlus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                       Admit to House
