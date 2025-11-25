@@ -63,7 +63,10 @@ import {
   FileCheck,
   Download,
   Loader2,
-  Search
+  Search,
+  BarChart3,
+  PackageOpen,
+  ListChecks
 } from 'lucide-react';
 
 // --- Constants ---
@@ -2271,6 +2274,20 @@ const AdminDashboard = ({
           <button onClick={() => setTab('SETTINGS')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'SETTINGS' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
             <Key className="w-5 h-5" /> Settings
           </button>
+
+          {/* Desktop-Only Advanced Tools Section */}
+          <div className="pt-6 mt-6 border-t border-stone-200">
+            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-2">Advanced Tools</p>
+            <button onClick={() => setTab('BULK_OPERATIONS')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${tab === 'BULK_OPERATIONS' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
+              <ListChecks className="w-5 h-5" /> Bulk Operations
+            </button>
+            <button onClick={() => setTab('ANALYTICS')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'ANALYTICS' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
+              <BarChart3 className="w-5 h-5" /> Analytics & Reports
+            </button>
+            <button onClick={() => setTab('EXPORT')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'EXPORT' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
+              <PackageOpen className="w-5 h-5" /> Export Data
+            </button>
+          </div>
         </nav>
         <div className="p-6 border-t border-stone-100">
           <Button variant="outline" onClick={() => onNavigate('LANDING')} className="w-full justify-start text-stone-500 border-stone-200 hover:bg-red-50 hover:text-red-500 hover:border-red-100">
@@ -3087,6 +3104,316 @@ const AdminDashboard = ({
                 }}>
                   <Key className="w-4 h-4 mr-2" /> Update Password
                 </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* BULK OPERATIONS TAB - Desktop Only */}
+        {tab === 'BULK_OPERATIONS' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Bulk Operations</h2>
+                <p className="text-stone-600 mt-1">Perform actions on multiple residents at once</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
+            </div>
+
+            <Card>
+              <div className="text-center py-12">
+                <ListChecks className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-stone-700 mb-2">Bulk Operations Coming Soon</h3>
+                <p className="text-stone-500 max-w-md mx-auto">
+                  Select multiple residents and perform batch actions like approvals, discharges, transfers, and status updates.
+                </p>
+                <div className="mt-6 text-left max-w-2xl mx-auto bg-stone-50 rounded-xl p-6">
+                  <p className="font-bold text-stone-700 mb-3">Planned Features:</p>
+                  <ul className="space-y-2 text-sm text-stone-600">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Bulk approve pending applications</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Batch discharge residents with notes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Transfer multiple residents between houses</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Mass update resident statuses</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Send notifications to selected residents</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ANALYTICS TAB - Desktop Only */}
+        {tab === 'ANALYTICS' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Analytics & Reports</h2>
+                <p className="text-stone-600 mt-1">Detailed insights and statistics</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-stone-600 mb-1">Total Residents</p>
+                    <p className="text-3xl font-bold text-primary">{clients.filter(c => c.status === 'active').length}</p>
+                  </div>
+                  <Users className="w-12 h-12 text-primary/20" />
+                </div>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-amber-100/50 to-amber-50/30 border-amber-200/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-stone-600 mb-1">Pending Applications</p>
+                    <p className="text-3xl font-bold text-amber-600">{clients.filter(c => c.status === 'pending').length}</p>
+                  </div>
+                  <ClipboardCheck className="w-12 h-12 text-amber-600/20" />
+                </div>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-100/50 to-green-50/30 border-green-200/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-stone-600 mb-1">Total Houses</p>
+                    <p className="text-3xl font-bold text-green-600">{houses.length}</p>
+                  </div>
+                  <Home className="w-12 h-12 text-green-600/20" />
+                </div>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-blue-100/50 to-blue-50/30 border-blue-200/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-stone-600 mb-1">Occupancy Rate</p>
+                    <p className="text-3xl font-bold text-blue-600">
+                      {Math.round((clients.filter(c => c.status === 'active' && c.assignedBedId).length / houses.reduce((acc, h) => acc + h.rooms.reduce((racc, r) => racc + r.beds.length, 0), 0)) * 100)}%
+                    </p>
+                  </div>
+                  <BarChart3 className="w-12 h-12 text-blue-600/20" />
+                </div>
+              </Card>
+            </div>
+
+            {/* House Occupancy Breakdown */}
+            <Card title="House Occupancy Breakdown">
+              <div className="space-y-4">
+                {houses.map(house => {
+                  const totalBeds = house.rooms.reduce((acc, r) => acc + r.beds.length, 0);
+                  const occupiedBeds = house.rooms.reduce((acc, r) => acc + r.beds.filter(b => b.occupantId).length, 0);
+                  const occupancyRate = totalBeds > 0 ? (occupiedBeds / totalBeds) * 100 : 0;
+
+                  return (
+                    <div key={house.id} className="border-b border-stone-100 last:border-0 pb-4 last:pb-0">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-bold text-stone-800">{house.name}</h4>
+                        <span className="text-sm text-stone-600">{occupiedBeds}/{totalBeds} beds occupied</span>
+                      </div>
+                      <div className="w-full bg-stone-100 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-primary h-full rounded-full transition-all duration-500"
+                          style={{ width: `${occupancyRate}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-stone-500 mt-1">{Math.round(occupancyRate)}% capacity</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Status Breakdown */}
+            <Card title="Resident Status Distribution">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-2xl font-bold text-amber-600">{clients.filter(c => c.status === 'pending').length}</p>
+                  <p className="text-sm text-stone-600 mt-1">Pending</p>
+                </div>
+                <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
+                  <p className="text-2xl font-bold text-primary">{clients.filter(c => c.status === 'active').length}</p>
+                  <p className="text-sm text-stone-600 mt-1">Active</p>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-xl border border-green-100">
+                  <p className="text-2xl font-bold text-green-600">{clients.filter(c => c.status === 'alumni').length}</p>
+                  <p className="text-sm text-stone-600 mt-1">Alumni</p>
+                </div>
+                <div className="text-center p-4 bg-stone-50 rounded-xl border border-stone-200">
+                  <p className="text-2xl font-bold text-stone-600">{clients.filter(c => c.status === 'discharged').length}</p>
+                  <p className="text-sm text-stone-600 mt-1">Discharged</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* EXPORT TAB - Desktop Only */}
+        {tab === 'EXPORT' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Export Data</h2>
+                <p className="text-stone-600 mt-1">Download your data for backups or external use</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <Users className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-stone-800 mb-1">Export Residents</h3>
+                    <p className="text-sm text-stone-600 mb-4">
+                      Download all resident data including applications, active, and discharged residents.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const dataStr = JSON.stringify(clients, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `residents-${new Date().toISOString().split('T')[0]}.json`;
+                        link.click();
+                        toast.success('Residents data exported successfully!');
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" /> Export JSON
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-green-100 rounded-xl">
+                    <Home className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-stone-800 mb-1">Export Houses</h3>
+                    <p className="text-sm text-stone-600 mb-4">
+                      Download house configuration including rooms, beds, and occupancy data.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const dataStr = JSON.stringify(houses, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `houses-${new Date().toISOString().split('T')[0]}.json`;
+                        link.click();
+                        toast.success('Houses data exported successfully!');
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" /> Export JSON
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-100 rounded-xl">
+                    <ClipboardCheck className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-stone-800 mb-1">Export Chores</h3>
+                    <p className="text-sm text-stone-600 mb-4">
+                      Download all chore assignments and completion history.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const dataStr = JSON.stringify(chores, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `chores-${new Date().toISOString().split('T')[0]}.json`;
+                        link.click();
+                        toast.success('Chores data exported successfully!');
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" /> Export JSON
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-100 rounded-xl">
+                    <PackageOpen className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-stone-800 mb-1">Full Database Export</h3>
+                    <p className="text-sm text-stone-600 mb-4">
+                      Download complete database backup including all data.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const fullData = {
+                          exportDate: new Date().toISOString(),
+                          residents: clients,
+                          houses: houses,
+                          chores: chores
+                        };
+                        const dataStr = JSON.stringify(fullData, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `full-backup-${new Date().toISOString().split('T')[0]}.json`;
+                        link.click();
+                        toast.success('Full database backup exported successfully!');
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" /> Export All Data
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold text-blue-900 mb-1">About Exported Data</p>
+                    <p className="text-sm text-blue-800">
+                      Exported files are in JSON format and contain sensitive information. Store them securely and never share them publicly.
+                      You can use these exports for backups, data analysis, or migrating to other systems.
+                    </p>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
