@@ -2377,6 +2377,9 @@ const AdminDashboard = ({
             <button onClick={() => setTab('ACTIVITY_LOG')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'ACTIVITY_LOG' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100'}`}>
               <ScrollText className="w-5 h-5" /> Activity Log
             </button>
+            <button onClick={() => setTab('CALENDAR')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'CALENDAR' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100'}`}>
+              <Calendar className="w-5 h-5" /> Calendar View
+            </button>
           </div>
         </nav>
         <div className="p-6 border-t border-stone-100">
@@ -3726,6 +3729,217 @@ const AdminDashboard = ({
                     </p>
                   </div>
                 </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* CALENDAR TAB - Desktop Only */}
+        {tab === 'CALENDAR' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-stone-800 dark:text-stone-100 tracking-tight">Calendar View</h2>
+                <p className="text-stone-600 dark:text-stone-400 mt-1">View check-ins, drug tests, and important dates</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
+            </div>
+
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between bg-white dark:bg-stone-900 rounded-2xl p-4 border border-stone-200 dark:border-stone-700">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date();
+                  newDate.setMonth(newDate.getMonth() - 1);
+                  // Calendar refresh would go here
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100">
+                {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date();
+                  newDate.setMonth(newDate.getMonth() + 1);
+                  // Calendar refresh would go here
+                }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Events Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card title="Check-Ins Today" className="border-l-4 border-l-primary">
+                <div className="space-y-3">
+                  {clients
+                    .filter(c => c.checkInLogs?.some(log => {
+                      const logDate = new Date(log.timestamp);
+                      const today = new Date();
+                      return logDate.toDateString() === today.toDateString();
+                    }))
+                    .slice(0, 5)
+                    .map(client => {
+                      const todayLogs = client.checkInLogs?.filter(log => {
+                        const logDate = new Date(log.timestamp);
+                        const today = new Date();
+                        return logDate.toDateString() === today.toDateString();
+                      }) || [];
+                      return (
+                        <div key={client.id} className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-xl">
+                          <div>
+                            <p className="font-bold text-sm text-stone-800 dark:text-stone-100">
+                              {client.firstName} {client.lastName}
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400">
+                              {todayLogs.length} check-in{todayLogs.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <MapPin className="w-4 h-4 text-primary" />
+                        </div>
+                      );
+                    })}
+                  {clients.filter(c => c.checkInLogs?.some(log => {
+                    const logDate = new Date(log.timestamp);
+                    const today = new Date();
+                    return logDate.toDateString() === today.toDateString();
+                  })).length === 0 && (
+                    <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
+                      No check-ins today
+                    </p>
+                  )}
+                </div>
+              </Card>
+
+              <Card title="Recent Drug Tests" className="border-l-4 border-l-amber-500">
+                <div className="space-y-3">
+                  {clients
+                    .filter(c => c.drugTestLogs && c.drugTestLogs.length > 0)
+                    .slice(0, 5)
+                    .map(client => {
+                      const latestTest = client.drugTestLogs![client.drugTestLogs!.length - 1];
+                      return (
+                        <div key={client.id} className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-xl">
+                          <div>
+                            <p className="font-bold text-sm text-stone-800 dark:text-stone-100">
+                              {client.firstName} {client.lastName}
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400">
+                              {latestTest.date} - {latestTest.result}
+                            </p>
+                          </div>
+                          <FlaskConical className={`w-4 h-4 ${latestTest.result === 'Negative' ? 'text-primary' : 'text-red-500'}`} />
+                        </div>
+                      );
+                    })}
+                  {clients.filter(c => c.drugTestLogs && c.drugTestLogs.length > 0).length === 0 && (
+                    <p className="text-sm text-stone-500 dark:text-stone-400 text-center py-4">
+                      No drug tests recorded
+                    </p>
+                  )}
+                </div>
+              </Card>
+
+              <Card title="Upcoming Events" className="border-l-4 border-l-blue-500">
+                <div className="space-y-3">
+                  <div className="p-3 bg-stone-50 dark:bg-stone-800 rounded-xl">
+                    <p className="font-bold text-sm text-stone-800 dark:text-stone-100">
+                      Weekly House Meeting
+                    </p>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      Every Sunday at 6:00 PM
+                    </p>
+                  </div>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 text-center py-4">
+                    More events coming soon
+                  </p>
+                </div>
+              </Card>
+            </div>
+
+            {/* Timeline View */}
+            <Card title="Recent Activity Timeline">
+              <div className="space-y-4">
+                {clients
+                  .flatMap(client => [
+                    ...(client.checkInLogs || []).map(log => ({
+                      type: 'check-in' as const,
+                      client,
+                      timestamp: log.timestamp,
+                      data: log
+                    })),
+                    ...(client.drugTestLogs || []).map(log => ({
+                      type: 'drug-test' as const,
+                      client,
+                      timestamp: new Date(log.date).getTime(),
+                      data: log
+                    }))
+                  ])
+                  .sort((a, b) => b.timestamp - a.timestamp)
+                  .slice(0, 20)
+                  .map((event, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-4 p-4 bg-stone-50 dark:bg-stone-800 rounded-xl border-l-4 border-l-primary"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        {event.type === 'check-in' ? (
+                          <MapPin className="w-5 h-5 text-primary" />
+                        ) : (
+                          <FlaskConical className="w-5 h-5 text-amber-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-bold text-stone-800 dark:text-stone-100">
+                              {event.client.firstName} {event.client.lastName}
+                            </p>
+                            <p className="text-sm text-stone-600 dark:text-stone-300">
+                              {event.type === 'check-in' ? (
+                                <>
+                                  Check-in at {(event.data as CheckInLog).locationName}
+                                  {(event.data as CheckInLog).comment && (
+                                    <span className="text-xs text-stone-500 dark:text-stone-400 block mt-1">
+                                      "{(event.data as CheckInLog).comment}"
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  Drug Test: {(event.data as DrugTestLog).result} ({(event.data as DrugTestLog).type})
+                                  {(event.data as DrugTestLog).notes && (
+                                    <span className="text-xs text-stone-500 dark:text-stone-400 block mt-1">
+                                      "{(event.data as DrugTestLog).notes}"
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </p>
+                          </div>
+                          <span className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap ml-4">
+                            {new Date(event.timestamp).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {clients.flatMap(c => [...(c.checkInLogs || []), ...(c.drugTestLogs || [])]).length === 0 && (
+                  <p className="text-stone-500 dark:text-stone-400 text-center py-8">
+                    No activity to display
+                  </p>
+                )}
               </div>
             </Card>
           </div>
