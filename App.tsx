@@ -3461,6 +3461,10 @@ export default function App() {
           console.log('✅ Houses initialized successfully');
         }
 
+        // DISABLED: Auto-population of mock residents
+        // The following code was disabled to prevent fake residents from being created
+        // If you need to re-enable it for testing, uncomment the block below
+        /*
         // Check if clients collection is empty (first-time setup)
         const clientsEmpty = await isClientsCollectionEmpty();
         console.log(`👥 Clients collection empty: ${clientsEmpty}`);
@@ -3496,6 +3500,8 @@ export default function App() {
         } else {
           console.log('ℹ️ Clients collection already has data, skipping initialization');
         }
+        */
+        console.log('ℹ️ Mock resident auto-population is disabled');
 
         // Set up real-time listeners
         console.log('👂 Setting up real-time listeners...');
@@ -3528,7 +3534,7 @@ export default function App() {
         console.error('Error initializing Firebase:', error);
         // Fallback to mock data if Firebase fails
         setHouses(MOCK_HOUSES);
-        setClients(MOCK_CLIENTS);
+        setClients([]); // Don't populate with mock residents
         setIsInitializing(false);
       }
     };
