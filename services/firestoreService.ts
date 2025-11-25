@@ -408,6 +408,7 @@ const SETTINGS_DOC_ID = 'app-settings';
 
 export interface AppSettings {
   adminPassword?: string;
+  archiveThresholdDays?: number; // Days after discharge to auto-archive (default: 90)
 }
 
 /**
@@ -490,4 +491,93 @@ export const subscribeToActivityLogs = (
       }
     }
   );
+};
+
+// ============================================
+// ARCHIVE OPERATIONS
+// ============================================
+
+const ARCHIVED_CLIENTS_COLLECTION = 'archivedClients';
+
+/**
+ * Archive a client (move from clients to archivedClients)
+ */
+export const archiveClient = async (clientId: string): Promise<void> => {
+  const client = await getClient(clientId);
+  if (!client) throw new Error('Client not found');
+
+  // Create archived copy
+  const archiveRef = doc(db, ARCHIVED_CLIENTS_COLLECTION, clientId);
+  await setDoc(archiveRef, {
+    ...client,
+    archivedAt: Timestamp.now()
+  });
+
+  // Delete from active clients
+  await deleteClient(clientId);
+};
+
+/**
+ * Restore a client from archive
+ */
+export const restoreClient = async (clientId: string): Promise<void> => {
+  const archiveRef = doc(db, ARCHIVED_CLIENTS_COLLECTION, clientId);
+  const archiveSnap = await getDoc(archiveRef);
+
+  if (!archiveSnap.exists()) throw new Error('Archived client not found');
+
+  const archivedData = archiveSnap.data();
+  const { archivedAt, ...clientData } = archivedData;
+
+  // Restore to active clients
+  const clientRef = doc(db, CLIENTS_COLLECTION, clientId);
+  await setDoc(clientRef, {
+    ...clientData,
+    updatedAt: Timestamp.now()
+  });
+
+  // Delete from archive
+  await deleteDoc(archiveRef);
+};
+
+/**
+ * Get all archived clients
+ */
+export const getArchivedClients = async (): Promise<Client[]> => {
+  const archiveSnapshot = await getDocs(collection(db, ARCHIVED_CLIENTS_COLLECTION));
+  return archiveSnapshot.docs.map(doc => {
+    const data = doc.data();
+    const { createdAt, updatedAt, archivedAt, ...clientData } = data;
+    return clientData as Client;
+  });
+};
+
+/**
+ * Archive old discharged clients based on threshold
+ * @param thresholdDays - Days since discharge date
+ * @returns Number of clients archived
+ */
+export const archiveOldClients = async (thresholdDays: number = 90): Promise<number> => {
+  const clients = await getClients();
+  const now = new Date();
+  let archivedCount = 0;
+
+  for (const client of clients) {
+    // Only archive discharged clients
+    if (client.status === 'discharged' && client.dischargeRecord?.date) {
+      const dischargeDate = new Date(client.dischargeRecord.date);
+      const daysSinceDischarge = Math.floor((now.getTime() - dischargeDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysSinceDischarge >= thresholdDays) {
+        try {
+          await archiveClient(client.id);
+          archivedCount++;
+        } catch (error) {
+          console.error(`Failed to archive client ${client.id}:`, error);
+        }
+      }
+    }
+  }
+
+  return archivedCount;
 };

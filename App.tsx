@@ -21,7 +21,10 @@ import {
   deleteChore,
   addChoreCompletion,
   getSettings,
-  updateSettings
+  updateSettings,
+  archiveOldClients,
+  getArchivedClients,
+  restoreClient
 } from './services/firestoreService';
 import { getRandomBackground, Background } from './backgrounds';
 import { Button } from './components/Button';
@@ -69,7 +72,9 @@ import {
   ListChecks,
   Moon,
   Sun,
-  ScrollText
+  ScrollText,
+  Archive,
+  Undo2
 } from 'lucide-react';
 
 // --- Constants ---
@@ -1998,6 +2003,25 @@ const AdminDashboard = ({
     localStorage.setItem('darkMode', darkMode.toString());
   }, [darkMode]);
 
+  // Archive State
+  const [archivedClients, setArchivedClients] = useState<Client[]>([]);
+  const [archiveThresholdDays, setArchiveThresholdDays] = useState(90);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  // Load archived clients on mount
+  useEffect(() => {
+    getArchivedClients().then(setArchivedClients).catch(console.error);
+  }, []);
+
+  // Load archive threshold from settings
+  useEffect(() => {
+    getSettings().then(settings => {
+      if (settings.archiveThresholdDays) {
+        setArchiveThresholdDays(settings.archiveThresholdDays);
+      }
+    }).catch(console.error);
+  }, []);
+
   // New House Context Logic
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   
@@ -3218,22 +3242,160 @@ const AdminDashboard = ({
           <div className="space-y-8">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Bulk Operations</h2>
-                <p className="text-stone-600 mt-1">Perform actions on multiple residents at once</p>
+                <h2 className="text-3xl font-bold text-stone-800 dark:text-stone-100 tracking-tight">Bulk Operations</h2>
+                <p className="text-stone-600 dark:text-stone-400 mt-1">Perform actions on multiple residents at once</p>
               </div>
               <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
             </div>
 
+            {/* Archive Management */}
+            <Card title="Archive Management" className="max-w-4xl">
+              <div className="space-y-6">
+                {/* Archive Settings */}
+                <div className="bg-stone-50 dark:bg-stone-800 rounded-xl p-6">
+                  <h4 className="font-bold text-stone-800 dark:text-stone-100 mb-4 flex items-center gap-2">
+                    <Archive className="w-5 h-5 text-primary" />
+                    Auto-Archive Settings
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+                        Archive discharged residents after:
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={archiveThresholdDays}
+                          onChange={(e) => setArchiveThresholdDays(parseInt(e.target.value) || 90)}
+                          className="px-4 py-2 border border-stone-300 dark:border-stone-600 rounded-xl w-32 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100"
+                        />
+                        <span className="text-stone-600 dark:text-stone-400">days</span>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              await updateSettings({ archiveThresholdDays });
+                              toast.success('Archive settings saved!');
+                            } catch (error) {
+                              toast.error('Failed to save settings');
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Save Setting
+                        </Button>
+                      </div>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-2">
+                        Residents discharged for more than {archiveThresholdDays} days will be eligible for archiving
+                      </p>
+                    </div>
+
+                    {/* Run Archive Button */}
+                    <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+                      <Button
+                        onClick={async () => {
+                          setIsArchiving(true);
+                          try {
+                            const count = await archiveOldClients(archiveThresholdDays);
+                            if (count === 0) {
+                              toast.info('No residents eligible for archiving');
+                            } else {
+                              toast.success(`Archived ${count} resident${count === 1 ? '' : 's'} successfully!`);
+                              // Refresh archived clients list
+                              const archived = await getArchivedClients();
+                              setArchivedClients(archived);
+                            }
+                          } catch (error) {
+                            toast.error('Failed to archive residents');
+                            console.error(error);
+                          } finally {
+                            setIsArchiving(false);
+                          }
+                        }}
+                        disabled={isArchiving}
+                        className="w-full sm:w-auto"
+                      >
+                        {isArchiving ? (
+                          <>
+                            <Activity className="w-4 h-4 mr-2 animate-spin" />
+                            Archiving...
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="w-4 h-4 mr-2" />
+                            Run Archive Now
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-2">
+                        This will move discharged residents (older than {archiveThresholdDays} days) to the archive collection
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Archived Residents List */}
+                <div className="bg-stone-50 dark:bg-stone-800 rounded-xl p-6">
+                  <h4 className="font-bold text-stone-800 dark:text-stone-100 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-stone-500" />
+                    Archived Residents ({archivedClients.length})
+                  </h4>
+                  {archivedClients.length === 0 ? (
+                    <p className="text-stone-500 dark:text-stone-400 text-sm text-center py-8">
+                      No archived residents yet
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {archivedClients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="flex items-center justify-between p-4 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
+                        >
+                          <div className="flex-1">
+                            <p className="font-bold text-stone-800 dark:text-stone-100">
+                              {client.firstName} {client.lastName}
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400">
+                              Discharged: {client.dischargeRecord?.date || 'N/A'}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await restoreClient(client.id);
+                                toast.success(`${client.firstName} ${client.lastName} restored!`);
+                                // Refresh lists
+                                const archived = await getArchivedClients();
+                                setArchivedClients(archived);
+                              } catch (error) {
+                                toast.error('Failed to restore resident');
+                                console.error(error);
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Undo2 className="w-4 h-4 mr-1" />
+                            Restore
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* Coming Soon Section */}
             <Card>
-              <div className="text-center py-12">
-                <ListChecks className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-stone-700 mb-2">Bulk Operations Coming Soon</h3>
-                <p className="text-stone-500 max-w-md mx-auto">
-                  Select multiple residents and perform batch actions like approvals, discharges, transfers, and status updates.
-                </p>
-                <div className="mt-6 text-left max-w-2xl mx-auto bg-stone-50 rounded-xl p-6">
-                  <p className="font-bold text-stone-700 mb-3">Planned Features:</p>
-                  <ul className="space-y-2 text-sm text-stone-600">
+              <div className="text-center py-8">
+                <ListChecks className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-stone-700 dark:text-stone-300 mb-2">More Bulk Operations Coming Soon</h3>
+                <div className="mt-6 text-left max-w-2xl mx-auto bg-stone-50 dark:bg-stone-800 rounded-xl p-6">
+                  <p className="font-bold text-stone-700 dark:text-stone-300 mb-3">Planned Features:</p>
+                  <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                       <span>Bulk approve pending applications</span>
@@ -3245,14 +3407,6 @@ const AdminDashboard = ({
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                       <span>Transfer multiple residents between houses</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span>Mass update resident statuses</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span>Send notifications to selected residents</span>
                     </li>
                   </ul>
                 </div>
