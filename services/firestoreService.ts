@@ -49,14 +49,32 @@ export const getHouses = async (): Promise<House[]> => {
 
 /**
  * Listen to houses changes in real-time
+ * @param callback - Function to call when houses data changes
+ * @param onError - Optional error handler
  */
-export const subscribeToHouses = (callback: (houses: House[]) => void) => {
+export const subscribeToHouses = (
+  callback: (houses: House[]) => void,
+  onError?: (error: Error) => void
+) => {
   const housesQuery = query(collection(db, HOUSES_COLLECTION));
 
-  return onSnapshot(housesQuery, (snapshot) => {
-    const houses = snapshot.docs.map(doc => doc.data() as House);
-    callback(houses);
-  });
+  return onSnapshot(
+    housesQuery,
+    {
+      // Only trigger on actual data changes, not metadata changes
+      includeMetadataChanges: false
+    },
+    (snapshot) => {
+      const houses = snapshot.docs.map(doc => doc.data() as House);
+      callback(houses);
+    },
+    (error) => {
+      console.error('Error in houses listener:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 };
 
 /**
@@ -126,21 +144,39 @@ export const getClients = async (): Promise<Client[]> => {
 
 /**
  * Listen to clients changes in real-time
+ * @param callback - Function to call when clients data changes
+ * @param onError - Optional error handler
  */
-export const subscribeToClients = (callback: (clients: Client[]) => void) => {
+export const subscribeToClients = (
+  callback: (clients: Client[]) => void,
+  onError?: (error: Error) => void
+) => {
   const clientsQuery = query(
     collection(db, CLIENTS_COLLECTION),
     orderBy('submissionDate', 'desc')
   );
 
-  return onSnapshot(clientsQuery, (snapshot) => {
-    const clients = snapshot.docs.map(doc => {
-      const data = doc.data();
-      const { createdAt, updatedAt, ...clientData } = data;
-      return clientData as Client;
-    });
-    callback(clients);
-  });
+  return onSnapshot(
+    clientsQuery,
+    {
+      // Only trigger on actual data changes, not metadata changes
+      includeMetadataChanges: false
+    },
+    (snapshot) => {
+      const clients = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const { createdAt, updatedAt, ...clientData } = data;
+        return clientData as Client;
+      });
+      callback(clients);
+    },
+    (error) => {
+      console.error('Error in clients listener:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 };
 
 /**
@@ -269,21 +305,39 @@ export const getChores = async (): Promise<Chore[]> => {
 
 /**
  * Listen to chores changes in real-time
+ * @param callback - Function to call when chores data changes
+ * @param onError - Optional error handler
  */
-export const subscribeToChores = (callback: (chores: Chore[]) => void) => {
+export const subscribeToChores = (
+  callback: (chores: Chore[]) => void,
+  onError?: (error: Error) => void
+) => {
   const choresQuery = query(
     collection(db, CHORES_COLLECTION),
     orderBy('createdAt', 'desc')
   );
 
-  return onSnapshot(choresQuery, (snapshot) => {
-    const chores = snapshot.docs.map(doc => {
-      const data = doc.data();
-      const { updatedAt, ...choreData } = data;
-      return choreData as Chore;
-    });
-    callback(chores);
-  });
+  return onSnapshot(
+    choresQuery,
+    {
+      // Only trigger on actual data changes, not metadata changes
+      includeMetadataChanges: false
+    },
+    (snapshot) => {
+      const chores = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const { updatedAt, ...choreData } = data;
+        return choreData as Chore;
+      });
+      callback(chores);
+    },
+    (error) => {
+      console.error('Error in chores listener:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 };
 
 /**
