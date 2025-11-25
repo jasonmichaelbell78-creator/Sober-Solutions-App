@@ -66,7 +66,9 @@ import {
   Search,
   BarChart3,
   PackageOpen,
-  ListChecks
+  ListChecks,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 // --- Constants ---
@@ -1979,6 +1981,22 @@ const AdminDashboard = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'discharged'>('all');
 
+  // Dark Mode State
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true';
+  });
+
+  // Apply dark mode class to document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode.toString());
+  }, [darkMode]);
+
   // New House Context Logic
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   
@@ -2245,17 +2263,17 @@ const AdminDashboard = ({
   });
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col md:flex-row">
+    <div className="min-h-screen bg-cream dark:bg-stone-950 flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
-      <aside className="w-72 bg-white border-r border-stone-200 hidden md:flex flex-col shadow-sm z-20 sticky top-0 h-screen">
-        <div className="p-8 border-b border-stone-100">
+      <aside className="w-72 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-700 hidden md:flex flex-col shadow-sm z-20 sticky top-0 h-screen">
+        <div className="p-8 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-3xl font-bold text-primary tracking-tight">Manager</h2>
+            <h2 className="text-3xl font-bold text-primary dark:text-primary tracking-tight">Manager</h2>
             <Button size="sm" variant="outline" onClick={() => setSelectedHouseId(null)} className="px-3 py-1 h-auto text-xs rounded-lg">Switch</Button>
           </div>
-          <div className="px-4 py-3 bg-stone-50 rounded-xl border border-stone-200">
-              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Current Context</p>
-              <p className="font-bold text-stone-800 truncate text-lg">{selectedHouseId === 'ALL' ? 'Headquarters' : houses.find(h => h.id === selectedHouseId)?.name}</p>
+          <div className="px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700">
+              <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Current Context</p>
+              <p className="font-bold text-stone-800 dark:text-stone-100 truncate text-lg">{selectedHouseId === 'ALL' ? 'Headquarters' : houses.find(h => h.id === selectedHouseId)?.name}</p>
           </div>
         </div>
         <nav className="flex-1 px-6 space-y-3 pt-8">
@@ -2297,10 +2315,10 @@ const AdminDashboard = ({
       </aside>
 
       {/* Main Content & Mobile Layout */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-cream relative">
-        
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-cream dark:bg-stone-950 relative">
+
         {/* Mobile Header */}
-        <div className="md:hidden bg-white border-b border-stone-200 p-4 flex justify-between items-center shadow-sm z-20 shrink-0">
+        <div className="md:hidden bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-700 p-4 flex justify-between items-center shadow-sm z-20 shrink-0">
             <div>
                 <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Manager View</span>
                 <h2 className="font-bold text-xl text-primary truncate max-w-[200px]">
@@ -3104,6 +3122,44 @@ const AdminDashboard = ({
                 }}>
                   <Key className="w-4 h-4 mr-2" /> Update Password
                 </Button>
+              </div>
+            </Card>
+
+            {/* Dark Mode Toggle */}
+            <Card title="Appearance" className="max-w-2xl">
+              <div className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Choose between light and dark theme for the admin dashboard.
+                </p>
+                <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    {darkMode ? (
+                      <Moon className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Sun className="w-5 h-5 text-accent" />
+                    )}
+                    <div>
+                      <p className="font-bold text-stone-800 dark:text-stone-100">
+                        {darkMode ? 'Dark Mode' : 'Light Mode'}
+                      </p>
+                      <p className="text-xs text-stone-500 dark:text-stone-400">
+                        {darkMode ? 'Easier on the eyes at night' : 'Better visibility in daylight'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDarkMode(!darkMode)}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                      darkMode ? 'bg-primary' : 'bg-stone-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                        darkMode ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </Card>
           </div>
