@@ -62,7 +62,8 @@ import {
   Eye,
   FileCheck,
   Download,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 
 // --- Constants ---
@@ -1971,6 +1972,10 @@ const AdminDashboard = ({
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Search/Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'discharged'>('all');
+
   // New House Context Logic
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   
@@ -2214,9 +2219,26 @@ const AdminDashboard = ({
   const filteredHouses = selectedHouseId === 'ALL' ? houses : houses.filter(h => h.id === selectedHouseId);
   
   const filteredClients = clients.filter(c => {
-    if (selectedHouseId === 'ALL') return true;
-    // Show if assigned to house OR if unassigned but targetHouseId is this house
-    return c.assignedHouseId === selectedHouseId || (!c.assignedHouseId && c.targetHouseId === selectedHouseId);
+    // House filtering
+    const matchesHouse = selectedHouseId === 'ALL'
+      ? true
+      : c.assignedHouseId === selectedHouseId || (!c.assignedHouseId && c.targetHouseId === selectedHouseId);
+
+    // Search filtering
+    const matchesSearch = searchTerm === ''
+      ? true
+      : `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phone.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Status filtering
+    const matchesStatus = statusFilter === 'all'
+      ? true
+      : (statusFilter === 'discharged'
+          ? (c.status === 'discharged' || c.status === 'alumni')
+          : c.status === statusFilter);
+
+    return matchesHouse && matchesSearch && matchesStatus;
   });
 
   return (
@@ -2455,7 +2477,63 @@ const AdminDashboard = ({
                  <h2 className="text-3xl font-bold text-stone-800 tracking-tight">Resident Directory</h2>
                  {selectedHouseId !== 'ALL' && <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-bold">{houses.find(h => h.id === selectedHouseId)?.name}</span>}
              </div>
-             
+
+             {/* Search and Filter Bar */}
+             <div className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
+               <div className="flex flex-col sm:flex-row gap-3">
+                 <div className="flex-1 relative">
+                   <Search className="w-5 h-5 text-stone-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                   <input
+                     type="text"
+                     placeholder="Search by name, email, or phone..."
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                     className="w-full pl-10 pr-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                   />
+                   {searchTerm && (
+                     <button
+                       onClick={() => setSearchTerm('')}
+                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                     >
+                       <X className="w-4 h-4" />
+                     </button>
+                   )}
+                 </div>
+                 <div className="flex gap-2">
+                   <select
+                     value={statusFilter}
+                     onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                     className="px-4 py-2.5 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-medium text-stone-700 bg-white"
+                   >
+                     <option value="all">All Statuses</option>
+                     <option value="pending">Pending</option>
+                     <option value="active">Active</option>
+                     <option value="discharged">Discharged</option>
+                   </select>
+                   {(searchTerm || statusFilter !== 'all') && (
+                     <button
+                       onClick={() => {
+                         setSearchTerm('');
+                         setStatusFilter('all');
+                       }}
+                       className="px-4 py-2.5 text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-50 rounded-lg transition-colors"
+                     >
+                       Clear
+                     </button>
+                   )}
+                 </div>
+               </div>
+               {(searchTerm || statusFilter !== 'all') && (
+                 <div className="mt-3 pt-3 border-t border-stone-100">
+                   <p className="text-sm text-stone-600">
+                     Found <span className="font-bold text-primary">{filteredClients.length}</span> resident{filteredClients.length !== 1 ? 's' : ''}
+                     {searchTerm && <span> matching "<span className="font-medium">{searchTerm}</span>"</span>}
+                     {statusFilter !== 'all' && <span> with status <span className="font-medium">{statusFilter}</span></span>}
+                   </p>
+                 </div>
+               )}
+             </div>
+
              {/* SEPARATED BY HOUSE CONTEXT */}
              <div className="space-y-10">
                 {/* Pending Applications Section */}
