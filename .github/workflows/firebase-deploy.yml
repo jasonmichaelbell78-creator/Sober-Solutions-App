@@ -28,11 +28,17 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: sober-solutions-app
-        env:
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+      - name: Deployment skipped (missing secret)
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT == '' }}
+        run: |
+          echo "⚠️  Firebase deployment skipped - FIREBASE_SERVICE_ACCOUNT secret not configured"
+          echo "📝 To enable auto-deployment, add the FIREBASE_SERVICE_ACCOUNT secret to your repository"
+          echo "🔗 See FIREBASE_DEPLOY_SETUP.md for instructions"
