@@ -3627,30 +3627,48 @@ export default function App() {
         */
         console.log('ℹ️ Mock resident auto-population is disabled');
 
-        // Set up real-time listeners
+        // Set up real-time listeners with error handling
         console.log('👂 Setting up real-time listeners...');
-        unsubscribeHouses = subscribeToHouses((housesData) => {
-          console.log(`📊 Received ${housesData.length} houses from Firestore`);
-          setHouses(housesData);
-        });
+        unsubscribeHouses = subscribeToHouses(
+          (housesData) => {
+            console.log(`📊 Received ${housesData.length} houses from Firestore`);
+            setHouses(housesData);
+          },
+          (error) => {
+            console.error('Houses listener error:', error);
+            toast.error('Connection to houses data lost. Please refresh the page.');
+          }
+        );
 
-        unsubscribeClients = subscribeToClients((clientsData) => {
-          console.log(`📊 Received ${clientsData.length} clients from Firestore`);
-          setClients(clientsData);
+        unsubscribeClients = subscribeToClients(
+          (clientsData) => {
+            console.log(`📊 Received ${clientsData.length} clients from Firestore`);
+            setClients(clientsData);
 
-          // Update currentUser if they're in the updated clients
-          // Use functional form to avoid stale closure
-          setCurrentUser((prevUser) => {
-            if (!prevUser) return prevUser;
-            const updatedCurrentUser = clientsData.find(c => c.id === prevUser.id);
-            return updatedCurrentUser || prevUser;
-          });
-        });
+            // Update currentUser if they're in the updated clients
+            // Use functional form to avoid stale closure
+            setCurrentUser((prevUser) => {
+              if (!prevUser) return prevUser;
+              const updatedCurrentUser = clientsData.find(c => c.id === prevUser.id);
+              return updatedCurrentUser || prevUser;
+            });
+          },
+          (error) => {
+            console.error('Clients listener error:', error);
+            toast.error('Connection to residents data lost. Please refresh the page.');
+          }
+        );
 
-        unsubscribeChores = subscribeToChores((choresData) => {
-          console.log(`📊 Received ${choresData.length} chores from Firestore`);
-          setChores(choresData);
-        });
+        unsubscribeChores = subscribeToChores(
+          (choresData) => {
+            console.log(`📊 Received ${choresData.length} chores from Firestore`);
+            setChores(choresData);
+          },
+          (error) => {
+            console.error('Chores listener error:', error);
+            toast.error('Connection to chores data lost. Please refresh the page.');
+          }
+        );
 
         console.log('✅ Firebase initialization complete');
         setIsInitializing(false);
