@@ -2006,8 +2006,52 @@ const AdminDashboard = ({
       return (
           <div className="min-h-screen bg-cream flex items-center justify-center p-4">
               <div className="max-w-2xl w-full">
-                  <h2 className="text-3xl font-bold text-primary mb-2 text-center tracking-tight">Manager Dashboard</h2>
-                  <p className="text-stone-500 text-center mb-10 text-lg">Select a property to manage or view Headquarters.</p>
+                  <h2 className="text-3xl font-bold text-primary dark:text-primary mb-2 text-center tracking-tight">Manager Dashboard</h2>
+                  <p className="text-stone-500 dark:text-stone-400 text-center mb-8 text-lg">Select a property to manage or view Headquarters.</p>
+
+                  {/* Quick Stats Widgets */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                    <div className="bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200 dark:border-stone-700 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Users className="w-4 h-4 text-primary" />
+                        <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Active</p>
+                      </div>
+                      <p className="text-2xl font-bold text-primary dark:text-primary">{clients.filter(c => c.status === 'active').length}</p>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-1">Residents</p>
+                    </div>
+
+                    <div className="bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200 dark:border-stone-700 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ClipboardCheck className="w-4 h-4 text-amber-600" />
+                        <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Pending</p>
+                      </div>
+                      <p className="text-2xl font-bold text-amber-600">{clients.filter(c => c.status === 'pending').length}</p>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-1">Applications</p>
+                    </div>
+
+                    <div className="bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200 dark:border-stone-700 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Home className="w-4 h-4 text-green-600" />
+                        <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Houses</p>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">{houses.length}</p>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-1">Properties</p>
+                    </div>
+
+                    <div className="bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200 dark:border-stone-700 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity className="w-4 h-4 text-blue-600" />
+                        <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Occupancy</p>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {houses.reduce((acc, h) => acc + h.rooms.reduce((racc, r) => racc + r.beds.length, 0), 0) > 0
+                          ? Math.round((clients.filter(c => c.status === 'active' && c.assignedBedId).length / houses.reduce((acc, h) => acc + h.rooms.reduce((racc, r) => racc + r.beds.length, 0), 0)) * 100)
+                          : 0}%
+                      </p>
+                      <p className="text-xs text-stone-500 dark:text-stone-500 mt-1">Capacity</p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                        <button 
                          onClick={() => setSelectedHouseId('ALL')}
