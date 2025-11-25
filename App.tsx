@@ -68,7 +68,8 @@ import {
   PackageOpen,
   ListChecks,
   Moon,
-  Sun
+  Sun,
+  ScrollText
 } from 'lucide-react';
 
 // --- Constants ---
@@ -2305,6 +2306,9 @@ const AdminDashboard = ({
             <button onClick={() => setTab('EXPORT')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'EXPORT' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}`}>
               <PackageOpen className="w-5 h-5" /> Export Data
             </button>
+            <button onClick={() => setTab('ACTIVITY_LOG')} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all mt-2 ${tab === 'ACTIVITY_LOG' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100'}`}>
+              <ScrollText className="w-5 h-5" /> Activity Log
+            </button>
           </div>
         </nav>
         <div className="p-6 border-t border-stone-100">
@@ -3475,6 +3479,59 @@ const AdminDashboard = ({
           </div>
         )}
         </div>
+
+        {/* ACTIVITY LOG TAB - Desktop Only */}
+        {tab === 'ACTIVITY_LOG' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-stone-800 dark:text-stone-100 tracking-tight">Activity Log</h2>
+                <p className="text-stone-600 dark:text-stone-400 mt-1">Track all administrative actions</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">DESKTOP ONLY</span>
+            </div>
+
+            <Card>
+              <div className="text-center py-12">
+                <ScrollText className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-stone-700 dark:text-stone-300 mb-2">Activity Log Coming Soon</h3>
+                <p className="text-stone-500 dark:text-stone-400 max-w-md mx-auto">
+                  Track all administrative actions including resident approvals, discharges, transfers, and system changes.
+                </p>
+                <div className="mt-6 text-left max-w-2xl mx-auto bg-stone-50 dark:bg-stone-800 rounded-xl p-6">
+                  <p className="font-bold text-stone-700 dark:text-stone-300 mb-3">What Will Be Logged:</p>
+                  <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Resident approvals and admissions</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Discharges and status changes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Bed and house transfers</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Resident deletions and updates</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Settings and configuration changes</span>
+                    </li>
+                  </ul>
+                  <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-700">
+                    <p className="text-xs text-stone-500 dark:text-stone-500">
+                      <strong>Note:</strong> All actions are logged with timestamps and marked as performed by "admin" for simplicity.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Mobile Bottom Nav - Visible only on Mobile */}
         <div className="md:hidden bg-white border-t border-stone-200 p-2 pb-6 flex justify-around items-center z-20 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">

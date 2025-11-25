@@ -13,7 +13,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { House, Client, CheckInLog, DrugTestLog, Chore, ChoreCompletion } from '../types';
+import { House, Client, CheckInLog, DrugTestLog, Chore, ChoreCompletion, ActivityLog } from '../types';
 
 // Collection names
 const HOUSES_COLLECTION = 'houses';
@@ -429,4 +429,65 @@ export const getSettings = async (): Promise<AppSettings> => {
 export const updateSettings = async (settings: Partial<AppSettings>) => {
   const settingsRef = doc(db, SETTINGS_COLLECTION, SETTINGS_DOC_ID);
   await setDoc(settingsRef, settings, { merge: true });
+};
+
+// ============================================
+// ACTIVITY LOG OPERATIONS
+// ============================================
+
+const ACTIVITY_LOG_COLLECTION = 'activityLogs';
+
+/**
+ * Create an activity log entry
+ */
+export const createActivityLog = async (log: Omit<ActivityLog, 'id'>): Promise<string> => {
+  const logId = `log_${Date.now()}`;
+  const logRef = doc(db, ACTIVITY_LOG_COLLECTION, logId);
+  await setDoc(logRef, {
+    ...log,
+    id: logId
+  });
+  return logId;
+};
+
+/**
+ * Get recent activity logs
+ */
+export const getActivityLogs = async (limit: number = 100): Promise<ActivityLog[]> => {
+  const logsQuery = query(
+    collection(db, ACTIVITY_LOG_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+  const logsSnapshot = await getDocs(logsQuery);
+  return logsSnapshot.docs.slice(0, limit).map(doc => doc.data() as ActivityLog);
+};
+
+/**
+ * Listen to activity logs in real-time
+ */
+export const subscribeToActivityLogs = (
+  callback: (logs: ActivityLog[]) => void,
+  onError?: (error: Error) => void
+) => {
+  const logsQuery = query(
+    collection(db, ACTIVITY_LOG_COLLECTION),
+    orderBy('timestamp', 'desc')
+  );
+
+  return onSnapshot(
+    logsQuery,
+    {
+      includeMetadataChanges: false
+    },
+    (snapshot) => {
+      const logs = snapshot.docs.map(doc => doc.data() as ActivityLog);
+      callback(logs.slice(0, 100)); // Limit to most recent 100
+    },
+    (error) => {
+      console.error('Error in activity logs listener:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 };

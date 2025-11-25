@@ -182,5 +182,16 @@ export interface Chore {
   houseId?: string; // Optional: chore specific to a house
 }
 
+export interface ActivityLog {
+  id: string;
+  timestamp: string;
+  action: 'approved' | 'admitted' | 'discharged' | 'transferred' | 'deleted' | 'updated' | 'created';
+  entityType: 'resident' | 'house' | 'chore' | 'settings';
+  entityId: string;
+  entityName: string; // Resident name, house name, etc.
+  details?: string; // Additional context (e.g., "Transferred from House A to House B")
+  performedBy: 'admin'; // Simple version - just track as 'admin'
+}
+
 export type ViewState = 'LANDING' | 'INTAKE' | 'ADMIN_DASHBOARD' | 'CLIENT_PORTAL';
-export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT' | 'CHORES' | 'SETTINGS' | 'BULK_OPERATIONS' | 'ANALYTICS' | 'EXPORT';
+export type AdminTab = 'HOUSES' | 'CLIENTS' | 'AI_REPORT' | 'CHORES' | 'SETTINGS' | 'BULK_OPERATIONS' | 'ANALYTICS' | 'EXPORT' | 'ACTIVITY_LOG';
