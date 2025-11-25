@@ -1057,12 +1057,36 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
         }
       });
 
-      // 2. Update client record
-      const updatedClient = {
-        ...client,
+      // 2. Update client record - PRESERVE ALL FIELDS
+      const updatedClient: Client = {
+        // Explicitly preserve all client data
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        email: client.email,
+        phone: client.phone,
+        password: client.password,
+        dateOfBirth: client.dateOfBirth,
+        emergencyContact: client.emergencyContact,
+        emergencyPhone: client.emergencyPhone,
+        submissionDate: client.submissionDate,
+        targetHouseId: client.targetHouseId,
+        status: client.status,
+        drugTestLogs: client.drugTestLogs || [],
+        dischargeRecord: client.dischargeRecord,
+        notes: client.notes || [],
+        checkInLogs: client.checkInLogs || [],
+        // Update only these fields
         assignedHouseId: transferHouseId,
         assignedBedId: transferBedId
       };
+
+      console.log('Transferring resident:', {
+        name: `${client.firstName} ${client.lastName}`,
+        from: { house: client.assignedHouseId, bed: client.assignedBedId },
+        to: { house: transferHouseId, bed: transferBedId },
+        preservedFields: Object.keys(updatedClient)
+      });
 
       // 3. Save to Firebase
       await onUpdateHouses(updatedHouses);
@@ -1976,15 +2000,35 @@ const AdminDashboard = ({
           };
       });
 
-      // 3. Update Client (Set Status & Assignment)
-      const updatedClient = {
-          ...admittingClient,
+      // 3. Update Client (Set Status & Assignment) - PRESERVE ALL FIELDS
+      const updatedClient: Client = {
+          // Explicitly preserve all client data
+          id: admittingClient.id,
+          firstName: admittingClient.firstName,
+          lastName: admittingClient.lastName,
+          email: admittingClient.email,
+          phone: admittingClient.phone,
+          password: admittingClient.password,
+          dateOfBirth: admittingClient.dateOfBirth,
+          emergencyContact: admittingClient.emergencyContact,
+          emergencyPhone: admittingClient.emergencyPhone,
+          submissionDate: admittingClient.submissionDate,
+          targetHouseId: admittingClient.targetHouseId,
+          drugTestLogs: admittingClient.drugTestLogs || [],
+          notes: admittingClient.notes || [],
+          checkInLogs: admittingClient.checkInLogs || [],
+          // Update these fields
           status: 'active' as const,
           assignedHouseId: selectionDetails.houseId,
           assignedBedId: selectionDetails.bedId,
-          drugTestLogs: admittingClient.drugTestLogs || [],
           dischargeRecord: undefined
       };
+
+      console.log('Admitting resident:', {
+          name: `${admittingClient.firstName} ${admittingClient.lastName}`,
+          to: { house: selectionDetails.houseId, bed: selectionDetails.bedId },
+          preservedFields: Object.keys(updatedClient)
+      });
 
       // 4. Save to Firebase (await both operations)
       try {
