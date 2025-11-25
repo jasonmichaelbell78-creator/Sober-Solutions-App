@@ -2151,6 +2151,7 @@ const AdminDashboard = ({
   const [archivedClients, setArchivedClients] = useState<Client[]>([]);
   const [archiveThresholdDays, setArchiveThresholdDays] = useState(90);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
 
   // Load archived clients on mount
   useEffect(() => {
@@ -3485,51 +3486,129 @@ const AdminDashboard = ({
 
                 {/* Archived Residents List */}
                 <div className="bg-stone-50 dark:bg-stone-800 rounded-xl p-6">
-                  <h4 className="font-bold text-stone-800 dark:text-stone-100 mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-stone-500" />
-                    Archived Residents ({archivedClients.length})
-                  </h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-stone-500" />
+                      Archived Residents ({archivedClients.length})
+                    </h4>
+                  </div>
+
+                  {/* Search Box */}
+                  {archivedClients.length > 0 && (
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400" />
+                        <input
+                          type="text"
+                          placeholder="Search archived residents by name, phone, email..."
+                          value={archiveSearchTerm}
+                          onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-stone-300 dark:border-stone-600 rounded-xl bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+                        {archiveSearchTerm && `Showing ${archivedClients.filter(c =>
+                          `${c.firstName} ${c.lastName} ${c.phone} ${c.email}`.toLowerCase().includes(archiveSearchTerm.toLowerCase())
+                        ).length} of ${archivedClients.length} archived residents`}
+                      </p>
+                    </div>
+                  )}
+
                   {archivedClients.length === 0 ? (
                     <p className="text-stone-500 dark:text-stone-400 text-sm text-center py-8">
                       No archived residents yet
                     </p>
                   ) : (
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {archivedClients.map((client) => (
+                    <>
+                      {archivedClients
+                        .filter(c => {
+                          if (!archiveSearchTerm) return true;
+                          const searchLower = archiveSearchTerm.toLowerCase();
+                          return (
+                            c.firstName.toLowerCase().includes(searchLower) ||
+                            c.lastName.toLowerCase().includes(searchLower) ||
+                            c.phone?.toLowerCase().includes(searchLower) ||
+                            c.email?.toLowerCase().includes(searchLower) ||
+                            c.dischargeRecord?.reason?.toLowerCase().includes(searchLower)
+                          );
+                        }).length === 0 ? (
+                        <p className="text-stone-500 dark:text-stone-400 text-sm text-center py-8">
+                          No archived residents match your search
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {archivedClients
+                            .filter(c => {
+                              if (!archiveSearchTerm) return true;
+                              const searchLower = archiveSearchTerm.toLowerCase();
+                              return (
+                                c.firstName.toLowerCase().includes(searchLower) ||
+                                c.lastName.toLowerCase().includes(searchLower) ||
+                                c.phone?.toLowerCase().includes(searchLower) ||
+                                c.email?.toLowerCase().includes(searchLower) ||
+                                c.dischargeRecord?.reason?.toLowerCase().includes(searchLower)
+                              );
+                            })
+                            .map((client) => (
                         <div
                           key={client.id}
-                          className="flex items-center justify-between p-4 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
+                          className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 p-4"
                         >
-                          <div className="flex-1">
-                            <p className="font-bold text-stone-800 dark:text-stone-100">
-                              {client.firstName} {client.lastName}
-                            </p>
-                            <p className="text-xs text-stone-500 dark:text-stone-400">
-                              Discharged: {client.dischargeRecord?.date || 'N/A'}
-                            </p>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="font-bold text-stone-800 dark:text-stone-100 mb-1">
+                                {client.firstName} {client.lastName}
+                              </p>
+                              <div className="space-y-1">
+                                <p className="text-xs text-stone-500 dark:text-stone-400">
+                                  📧 {client.email || 'No email'}
+                                </p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400">
+                                  📱 {client.phone || 'No phone'}
+                                </p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400">
+                                  📅 Discharged: {client.dischargeRecord?.date || 'N/A'}
+                                </p>
+                                {client.dischargeRecord?.type && (
+                                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                                    📋 Reason: {client.dischargeRecord.type}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setViewingClient(client)}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  try {
+                                    await restoreClient(client.id);
+                                    toast.success(`${client.firstName} ${client.lastName} restored!`);
+                                    // Refresh lists
+                                    const archived = await getArchivedClients();
+                                    setArchivedClients(archived);
+                                  } catch (error) {
+                                    toast.error('Failed to restore resident');
+                                    console.error(error);
+                                  }
+                                }}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Undo2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <Button
-                            onClick={async () => {
-                              try {
-                                await restoreClient(client.id);
-                                toast.success(`${client.firstName} ${client.lastName} restored!`);
-                                // Refresh lists
-                                const archived = await getArchivedClients();
-                                setArchivedClients(archived);
-                              } catch (error) {
-                                toast.error('Failed to restore resident');
-                                console.error(error);
-                              }
-                            }}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Undo2 className="w-4 h-4 mr-1" />
-                            Restore
-                          </Button>
                         </div>
-                      ))}
-                    </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
