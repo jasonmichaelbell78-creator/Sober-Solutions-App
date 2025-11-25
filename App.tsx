@@ -1069,12 +1069,36 @@ const ClientDetailView = ({ client, houses, onClose, onUpdateClient, onUpdateHou
         }
       });
 
-      // 2. Update client record
-      const updatedClient = {
-        ...client,
+      // 2. Update client record - PRESERVE ALL FIELDS
+      const updatedClient: Client = {
+        // Explicitly preserve all client data
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        email: client.email,
+        phone: client.phone,
+        password: client.password,
+        dateOfBirth: client.dateOfBirth,
+        emergencyContact: client.emergencyContact,
+        emergencyPhone: client.emergencyPhone,
+        submissionDate: client.submissionDate,
+        targetHouseId: client.targetHouseId,
+        status: client.status,
+        drugTestLogs: client.drugTestLogs || [],
+        dischargeRecord: client.dischargeRecord,
+        notes: client.notes || [],
+        checkInLogs: client.checkInLogs || [],
+        // Update only these fields
         assignedHouseId: transferHouseId,
         assignedBedId: transferBedId
       };
+
+      console.log('Transferring resident:', {
+        name: `${client.firstName} ${client.lastName}`,
+        from: { house: client.assignedHouseId, bed: client.assignedBedId },
+        to: { house: transferHouseId, bed: transferBedId },
+        preservedFields: Object.keys(updatedClient)
+      });
 
       // 3. Save to Firebase
       await onUpdateHouses(updatedHouses);
@@ -2047,29 +2071,63 @@ const AdminDashboard = ({
           };
       });
 
-      // 3. Update Client (Set Status & Assignment)
-      const updatedClient = {
-          ...admittingClient,
+      // 3. Update Client (Set Status & Assignment) - PRESERVE ALL FIELDS
+      const updatedClient: Client = {
+          // Explicitly preserve all client data
+          id: admittingClient.id,
+          firstName: admittingClient.firstName,
+          lastName: admittingClient.lastName,
+          email: admittingClient.email,
+          phone: admittingClient.phone,
+          password: admittingClient.password,
+          dateOfBirth: admittingClient.dateOfBirth,
+          emergencyContact: admittingClient.emergencyContact,
+          emergencyPhone: admittingClient.emergencyPhone,
+          submissionDate: admittingClient.submissionDate,
+          targetHouseId: admittingClient.targetHouseId,
+          drugTestLogs: admittingClient.drugTestLogs || [],
+          notes: admittingClient.notes || [],
+          checkInLogs: admittingClient.checkInLogs || [],
+          // Update these fields
           status: 'active' as const,
           assignedHouseId: selectionDetails.houseId,
           assignedBedId: selectionDetails.bedId,
-          drugTestLogs: admittingClient.drugTestLogs || [],
           dischargeRecord: undefined
       };
 
-      // 4. Save to Firebase (await both operations)
-      await onUpdateHouses(updatedHouses);
-      await onUpdateClient(updatedClient);
+      console.log('Admitting resident:', {
+          name: `${admittingClient.firstName} ${admittingClient.lastName}`,
+          to: { house: selectionDetails.houseId, bed: selectionDetails.bedId },
+          preservedFields: Object.keys(updatedClient)
+      });
 
-      // 5. Show success message
+      // 4. Save to Firebase (await both operations)
+      try {
+        await onUpdateHouses(updatedHouses);
+      } catch (houseError) {
+        console.error('Error updating houses:', houseError);
+        throw new Error('Failed to update house assignments');
+      }
+
+      try {
+        await onUpdateClient(updatedClient);
+      } catch (clientError) {
+        console.error('Error updating client:', clientError);
+        throw new Error('Failed to update resident status');
+      }
+
+      // 5. Wait a moment for Firebase to propagate changes
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 6. Show success message
       toast.success(`${admittingClient.firstName} ${admittingClient.lastName} has been successfully admitted and assigned to the bed!`);
 
-      // 6. Close modal only after successful save
+      // 7. Close modal only after successful save and wait
       setAdmittingClient(null);
       setSelectionDetails(null);
     } catch (error) {
       console.error('Error admitting resident:', error);
-      toast.error('Error admitting resident. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Error admitting resident. Please try again.');
     } finally {
       setIsAdmitting(false);
     }
@@ -2416,7 +2474,7 @@ const AdminDashboard = ({
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
-                                 <div className="flex gap-3">
+                                 <div className="flex flex-wrap gap-2 sm:gap-3">
                                     <Button size="sm" variant="primary" onClick={() => {
                                       const updatedClient = { ...client, status: 'active' as const };
                                       onUpdateClient(updatedClient);
@@ -2447,7 +2505,7 @@ const AdminDashboard = ({
                                     <p className="text-sm text-stone-500 mt-1">Applied: {client.submissionDate}</p>
                                     <p className="text-sm text-stone-500">Target: <span className="font-medium text-stone-700">{houses.find(h => h.id === client.targetHouseId)?.name || 'Unknown'}</span></p>
                                  </div>
-                                 <div className="flex gap-3">
+                                 <div className="flex flex-wrap gap-2 sm:gap-3">
                                     <Button size="sm" variant="secondary" onClick={() => { setAdmittingClient(client); setAdmissionHouseId(client.targetHouseId || houses[0].id); }}>
                                       <UserPlus size={16} strokeWidth={2.5} absoluteStrokeWidth className="mr-1" />
                                       Admit to House
@@ -3527,6 +3585,10 @@ export default function App() {
           console.log('✅ Houses initialized successfully');
         }
 
+        // DISABLED: Auto-population of mock residents
+        // The following code was disabled to prevent fake residents from being created
+        // If you need to re-enable it for testing, uncomment the block below
+        /*
         // Check if clients collection is empty (first-time setup)
         const clientsEmpty = await isClientsCollectionEmpty();
         console.log(`👥 Clients collection empty: ${clientsEmpty}`);
@@ -3562,6 +3624,8 @@ export default function App() {
         } else {
           console.log('ℹ️ Clients collection already has data, skipping initialization');
         }
+        */
+        console.log('ℹ️ Mock resident auto-population is disabled');
 
         // Set up real-time listeners
         console.log('👂 Setting up real-time listeners...');
@@ -3594,7 +3658,7 @@ export default function App() {
         console.error('Error initializing Firebase:', error);
         // Fallback to mock data if Firebase fails
         setHouses(MOCK_HOUSES);
-        setClients(MOCK_CLIENTS);
+        setClients([]); // Don't populate with mock residents
         setIsInitializing(false);
       }
     };
